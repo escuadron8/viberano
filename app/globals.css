@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  /* Colores — paleta principal (azul calma / confianza luminoso) */
+  --color-primary: #60a5fa;
+  --color-primary-soft: #93c5fd;
+
+  /* Éxito y guía — verde menta suave */
+  --color-success: #6ee7b7;
+
+  /* Neutros — blancos y grises */
+  --color-canvas: #ffffff;
+  --color-canvas-soft: #f8fafc;
+  --color-ink-base: #334155;
+  --color-ink-secondary: #475569;
+  --color-hairline: #e2e8f0;
+
+  /* Chat */
+  --color-chat-ai-bg: #e0f2fe;
+  --color-chat-user-bg: #f8fafc;
+
+  /* Radios */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* Espaciados */
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter);
+
+  --color-primary: var(--color-primary);
+  --color-primary-soft: var(--color-primary-soft);
+  --color-success: var(--color-success);
+  --color-canvas: var(--color-canvas);
+  --color-canvas-soft: var(--color-canvas-soft);
+  --color-ink-base: var(--color-ink-base);
+  --color-ink-secondary: var(--color-ink-secondary);
+  --color-hairline: var(--color-hairline);
+  --color-chat-ai-bg: var(--color-chat-ai-bg);
+  --color-chat-user-bg: var(--color-chat-user-bg);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-pill: var(--radius-pill);
+
+  --spacing-xs: var(--spacing-xs);
+  --spacing-sm: var(--spacing-sm);
+  --spacing-md: var(--spacing-md);
+  --spacing-lg: var(--spacing-lg);
+  --spacing-xl: var(--spacing-xl);
+
+  /* Tipografía — tamaños de texto con su line-height y tracking */
+  --text-display-xl: 32px;
+  --text-display-xl--line-height: 1.2;
+  --text-display-xl--letter-spacing: -0.5px;
+  --text-display-xl--font-weight: 700;
+
+  --text-heading-md: 18px;
+  --text-heading-md--line-height: 1.4;
+  --text-heading-md--font-weight: 600;
+
+  --text-body-md: 15px;
+  --text-body-md--line-height: 1.5;
+  --text-body-md--font-weight: 400;
+
+  --text-button-md: 15px;
+  --text-button-md--line-height: 1;
+  --text-button-md--font-weight: 600;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink-base);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
