@@ -2,9 +2,10 @@ type AnilloProgresoProps = {
   progreso: number;
   tamano?: number;
   grosor?: number;
+  etiqueta?: string;
 };
 
-export function AnilloProgreso({ progreso, tamano = 96, grosor = 8 }: AnilloProgresoProps) {
+export function AnilloProgreso({ progreso, tamano = 96, grosor = 8, etiqueta }: AnilloProgresoProps) {
   const clamped = Math.min(Math.max(progreso, 0), 100);
   const radio = (tamano - grosor) / 2;
   const circunferencia = 2 * Math.PI * radio;
@@ -30,7 +31,12 @@ export function AnilloProgreso({ progreso, tamano = 96, grosor = 8 }: AnilloProg
           fill="none"
         />
       </svg>
-      <span className="absolute text-heading-md text-ink-base">{`${Math.round(clamped)}%`}</span>
+      <span className="absolute flex flex-col items-center gap-xs">
+        <span className={`text-ink-base ${etiqueta ? "text-display-xl" : "text-heading-md"}`}>
+          {`${Math.round(clamped)}%`}
+        </span>
+        {etiqueta ? <span className="text-body-md text-ink-secondary">{etiqueta}</span> : null}
+      </span>
     </div>
   );
 }
