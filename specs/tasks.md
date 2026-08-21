@@ -16,7 +16,7 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 | T-02 | Tokens del sistema de diseño | 0 | T-01 | |
 | T-03 | Componentes base + página de catálogo | 0 | T-02 | |
 | T-04 | Despliegue continuo en Vercel | 0 | T-01 | 🔴 GitHub + Vercel |
-| T-05 | Shell móvil y rutas de las 4 pantallas | 1 | T-03 | |
+| T-05 | Shell móvil y rutas de las 4 pantallas | 1 | T-03 | ✅ desplegado |
 | T-06 | Pantalla 1 — Onboarding | 1 | T-05 | 🔴 revisión en móvil |
 | T-07 | Pantalla 2 — Selección de software | 1 | T-05 | 🔴 revisión en móvil |
 | T-08 | Pantalla 3 — Chat (shell con datos falsos) | 1 | T-05 | 🔴 revisión en móvil |
