@@ -78,13 +78,18 @@ const MENSAJES_INICIALES_N8N: Mensaje[] = [
   },
 ];
 
+const PAUSA_ENTRE_MENSAJES = 900;
+const PAUSA_ANTES_DE_ESCRIBIR = 500;
+const DURACION_ESCRIBIENDO = 1100;
+
 export default function ChatPage() {
   const { herramienta } = useHerramienta();
   const nombreHerramienta = herramienta ?? "tu herramienta";
+  const esN8n = nombreHerramienta === "n8n";
 
   const [mensajes, setMensajes] = useState<Mensaje[]>(() =>
-    nombreHerramienta === "n8n"
-      ? MENSAJES_INICIALES_N8N
+    esN8n
+      ? []
       : [
           {
             id: "bienvenida",
@@ -95,12 +100,46 @@ export default function ChatPage() {
   );
   const [entrada, setEntrada] = useState("");
   const [escribiendo, setEscribiendo] = useState(false);
-  const turnoRef = useRef(nombreHerramienta === "n8n" ? GUION_N8N.length : 0);
+  const [reproduciendoDemo, setReproduciendoDemo] = useState(esN8n);
+  const turnoRef = useRef(esN8n ? GUION_N8N.length : 0);
   const finRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     finRef.current?.scrollIntoView({ block: "end" });
   }, [mensajes, escribiendo]);
+
+  useEffect(() => {
+    if (!esN8n) return;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let tiempo = PAUSA_ANTES_DE_ESCRIBIR;
+
+    MENSAJES_INICIALES_N8N.forEach((mensaje) => {
+      if (mensaje.autor === "ia") {
+        timers.push(setTimeout(() => setEscribiendo(true), tiempo));
+        tiempo += DURACION_ESCRIBIENDO;
+        timers.push(
+          setTimeout(() => {
+            setEscribiendo(false);
+            setMensajes((prev) => [...prev, mensaje]);
+          }, tiempo)
+        );
+      } else {
+        timers.push(
+          setTimeout(() => {
+            setMensajes((prev) => [...prev, mensaje]);
+          }, tiempo)
+        );
+      }
+      tiempo += PAUSA_ENTRE_MENSAJES;
+    });
+
+    timers.push(setTimeout(() => setReproduciendoDemo(false), tiempo));
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [esN8n]);
 
   function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -175,14 +214,15 @@ export default function ChatPage() {
       >
         <CampoTexto
           className="flex-1"
-          placeholder="Escribe tu pregunta..."
+          placeholder={reproduciendoDemo ? "El tutor está escribiendo..." : "Escribe tu pregunta..."}
           value={entrada}
           onChange={(e) => setEntrada(e.target.value)}
+          disabled={reproduciendoDemo}
           aria-label="Escribe tu pregunta"
         />
         <button
           type="submit"
-          disabled={!entrada.trim()}
+          disabled={!entrada.trim() || reproduciendoDemo}
           aria-label="Enviar"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-primary text-canvas transition-opacity disabled:opacity-40"
         >
