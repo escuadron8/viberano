@@ -6,12 +6,14 @@ import { CampoTexto } from "@/components/CampoTexto";
 import { Tarjeta } from "@/components/Tarjeta";
 import { useHerramienta, type Herramienta } from "@/components/HerramientaProvider";
 
-const HERRAMIENTAS: { nombre: Herramienta; inicial: string; estilo: string }[] = [
-  { nombre: "Salesforce", inicial: "S", estilo: "bg-primary/15 text-primary" },
+const HERRAMIENTAS_BASE: { nombre: Herramienta; inicial: string; estilo: string }[] = [
+  { nombre: "Salesforce", inicial: "S", estilo: "bg-canvas-soft text-ink-secondary border border-hairline" },
   { nombre: "Jira", inicial: "J", estilo: "bg-success/25 text-ink-base" },
-  { nombre: "Figma", inicial: "F", estilo: "bg-primary-soft/30 text-primary" },
-  { nombre: "Tableau", inicial: "T", estilo: "bg-canvas-soft text-ink-secondary border border-hairline" },
+  { nombre: "Claude", inicial: "C", estilo: "bg-primary/15 text-primary" },
+  { nombre: "n8n", inicial: "N", estilo: "bg-primary-soft/30 text-primary" },
 ];
+
+const HERRAMIENTAS = [...HERRAMIENTAS_BASE].sort((a, b) => a.nombre.localeCompare(b.nombre));
 
 export default function SoftwarePage() {
   const router = useRouter();

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 
-export type Herramienta = "Salesforce" | "Jira" | "Figma" | "Tableau";
+export type Herramienta = "Salesforce" | "Jira" | "Claude" | "n8n";
 
 type HerramientaContextValue = {
   herramienta: Herramienta | null;

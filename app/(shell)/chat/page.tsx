@@ -17,41 +17,85 @@ type Mensaje = {
   abstencion?: boolean;
 };
 
-function respuestaSimulada(herramienta: string, turno: number): Mensaje {
-  const guion: Omit<Mensaje, "id" | "autor">[] = [
-    {
-      texto: `Claro. En ${herramienta} puedes hacerlo desde el menú de configuración, en la sección de vistas. Haz clic en el icono de engranaje arriba a la derecha.`,
-      fuentes: ["oficial"],
-    },
-    {
-      texto: `Hay dos formas de conseguirlo: la vía recomendada por el equipo y un atajo que comparte la comunidad. Te dejo ambas para que elijas.`,
-      fuentes: ["oficial", "compartido"],
-      variasFuentes: true,
-    },
-    {
-      texto: "No dispongo de información fiable para responder esto todavía. Prueba a reformular la pregunta o consulta la documentación oficial.",
-      abstencion: true,
-    },
-  ];
+const GUION_GENERICO: Omit<Mensaje, "id" | "autor">[] = [
+  {
+    texto: `Claro. En {herramienta} puedes hacerlo desde el menú de configuración, en la sección de vistas. Haz clic en el icono de engranaje arriba a la derecha.`,
+    fuentes: ["oficial"],
+  },
+  {
+    texto: `Hay dos formas de conseguirlo: la vía recomendada por el equipo y un atajo que comparte la comunidad. Te dejo ambas para que elijas.`,
+    fuentes: ["oficial", "compartido"],
+    variasFuentes: true,
+  },
+  {
+    texto: "No dispongo de información fiable para responder esto todavía. Prueba a reformular la pregunta o consulta la documentación oficial.",
+    abstencion: true,
+  },
+];
 
-  const item = guion[turno % guion.length];
-  return { id: `ia-${turno}-${Date.now()}`, autor: "ia", ...item };
+const GUION_N8N: Omit<Mensaje, "id" | "autor">[] = [
+  {
+    texto: `Buena pregunta para empezar. Antes de nada, ¿tú vienes más del lado técnico o de negocio? Así te lo explico con el ejemplo que más te va a servir.`,
+  },
+  {
+    texto: `Perfecto, entonces piénsalo así: un workflow es como una receta de cocina automática. Cada "nodo" (esos cuadraditos que ves en el lienzo) es un paso de la receta — uno puede decir "cuando llegue un email nuevo", otro "resume ese email con IA", y otro "mándalo a Slack". Tú conectas los pasos con líneas, y n8n los ejecuta solo. ¿Quieres que montemos juntos uno sencillito con tu bandeja de correo como ejemplo?`,
+  },
+];
+
+function respuestaSimulada(herramienta: string, turno: number): Mensaje {
+  const item =
+    herramienta === "n8n" && turno < GUION_N8N.length
+      ? GUION_N8N[turno]
+      : GUION_GENERICO[turno % GUION_GENERICO.length];
+  return {
+    id: `ia-${turno}-${Date.now()}`,
+    autor: "ia",
+    ...item,
+    texto: item.texto.replace("{herramienta}", herramienta),
+  };
 }
+
+const MENSAJES_INICIALES_N8N: Mensaje[] = [
+  {
+    id: "n8n-u-0",
+    autor: "usuario",
+    texto: `Acabo de abrir n8n y no tengo ni idea de qué estoy viendo. ¿Qué es un "workflow"?`,
+  },
+  {
+    id: "n8n-ia-0",
+    autor: "ia",
+    texto: `Buena pregunta para empezar. Antes de nada, ¿tú vienes más del lado técnico o de negocio? Así te lo explico con el ejemplo que más te va a servir.`,
+  },
+  {
+    id: "n8n-u-1",
+    autor: "usuario",
+    texto: "Soy de negocio, no programo.",
+  },
+  {
+    id: "n8n-ia-1",
+    autor: "ia",
+    texto: `Perfecto, entonces piénsalo así: un workflow es como una receta de cocina automática. Cada "nodo" (esos cuadraditos que ves en el lienzo) es un paso de la receta — uno puede decir "cuando llegue un email nuevo", otro "resume ese email con IA", y otro "mándalo a Slack". Tú conectas los pasos con líneas, y n8n los ejecuta solo. ¿Quieres que montemos juntos uno sencillito con tu bandeja de correo como ejemplo?`,
+  },
+];
 
 export default function ChatPage() {
   const { herramienta } = useHerramienta();
   const nombreHerramienta = herramienta ?? "tu herramienta";
 
-  const [mensajes, setMensajes] = useState<Mensaje[]>(() => [
-    {
-      id: "bienvenida",
-      autor: "ia",
-      texto: `Hola, veo que estás aprendiendo ${nombreHerramienta}. ¿En qué puedo ayudarte hoy?`,
-    },
-  ]);
+  const [mensajes, setMensajes] = useState<Mensaje[]>(() =>
+    nombreHerramienta === "n8n"
+      ? MENSAJES_INICIALES_N8N
+      : [
+          {
+            id: "bienvenida",
+            autor: "ia",
+            texto: `Hola, veo que estás aprendiendo ${nombreHerramienta}. ¿En qué puedo ayudarte hoy?`,
+          },
+        ]
+  );
   const [entrada, setEntrada] = useState("");
   const [escribiendo, setEscribiendo] = useState(false);
-  const turnoRef = useRef(0);
+  const turnoRef = useRef(nombreHerramienta === "n8n" ? GUION_N8N.length : 0);
   const finRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
