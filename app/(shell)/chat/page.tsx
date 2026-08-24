@@ -12,7 +12,7 @@ type Mensaje = {
   id: string;
   autor: "ia" | "usuario";
   texto: string;
-  fuentes?: ("oficial" | "compartido" | "personal")[];
+  fuentes?: ("oficial" | "compartido" | "personal" | "web")[];
   variasFuentes?: boolean;
   abstencion?: boolean;
 };
@@ -28,7 +28,11 @@ const GUION_GENERICO: Omit<Mensaje, "id" | "autor">[] = [
     variasFuentes: true,
   },
   {
-    texto: "No dispongo de información fiable para responder esto todavía. Prueba a reformular la pregunta o consulta la documentación oficial.",
+    texto: `No encontré esto en la documentación oficial ni en el conocimiento compartido o personal, así que busqué referencias externas en la web. Tómalo con algo más de cautela que el resto de respuestas: {herramienta} lo describe así en su documentación pública.`,
+    fuentes: ["web"],
+  },
+  {
+    texto: "No dispongo de información fiable para responder esto todavía, ni siquiera en fuentes externas. Prueba a reformular la pregunta o consulta la documentación oficial.",
     abstencion: true,
   },
 ];

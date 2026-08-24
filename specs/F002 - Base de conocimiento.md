@@ -40,6 +40,7 @@ Gestionar de forma centralizada el conocimiento oficial, personal y colaborativo
 - Crear cursos.
 - Integraciones con gestores documentales corporativos.
 - Automatizar la validación del conocimiento mediante IA.
+- Búsqueda y uso de referencias externas en la web cuando no exista conocimiento organizacional suficiente (Feature 001).
 
 ---
 
@@ -176,3 +177,4 @@ Grupo de usuarios con el que puede compartirse conocimiento.
 - La documentación oficial continúa siendo la principal fuente de verdad del Tutor.
 - Toda respuesta debe indicar siempre el origen de la información utilizada.
 - La validación de conocimiento compartido requiere intervención humana.
+- Las referencias externas obtenidas en la web (Feature 001) no forman parte de esta base de conocimiento organizacional y no se gestionan, versionan ni validan como tal.

@@ -22,7 +22,7 @@ Actualmente este conocimiento se encuentra disperso y resulta difícil localizar
 
 El usuario necesita un asistente capaz de consultar el conocimiento organizacional, identificar el origen de cada respuesta y comunicar claramente el nivel de confianza de la información proporcionada.
 
-Cuando ninguna fuente de conocimiento aporte una respuesta suficientemente fiable, el Tutor debe reconocer esta situación, indicarlo explícitamente y nunca generar información inventada.
+Cuando ninguna fuente de conocimiento organizacional (oficial, compartida o personal) aporte una respuesta suficientemente fiable, el Tutor debe buscar referencias externas en la web antes de renunciar a responder, dejando claro que la información procede de una fuente externa y no ha sido validada por la organización. Únicamente cuando tampoco existan referencias externas fiables, el Tutor debe reconocer esta situación, indicarlo explícitamente y nunca generar información inventada.
 
 ---
 
@@ -97,6 +97,8 @@ Realizar consultas cuya respuesta proceda de distintas fuentes de conocimiento y
 
 3. **Dado** que la respuesta utiliza conocimiento personal del usuario, **Cuando** el Tutor responde, **Entonces** identifica que procede de sus notas o aprendizajes personales.
 
+4. **Dado** que una respuesta utiliza referencias externas obtenidas en la web, **Cuando** el Tutor responde, **Entonces** identifica claramente que la fuente es externa a la organización y no ha sido validada.
+
 ---
 
 ## Historia de Usuario 3 – Utilizar conocimiento personal (Prioridad: P2)
@@ -157,11 +159,37 @@ La confianza constituye el principal valor del producto.
 
 ### Test independiente
 
-Realizar preguntas para las que no exista conocimiento disponible.
+Realizar preguntas para las que no exista conocimiento disponible ni en la organización ni en fuentes externas.
 
 ### Escenarios de aceptación
 
-1. **Dado** que ninguna fuente de conocimiento contiene información suficiente, **Cuando** el usuario realiza una consulta, **Entonces** el Tutor responde indicando que no dispone de información fiable para responder.
+1. **Dado** que ninguna fuente de conocimiento organizacional ni ninguna referencia externa en la web contiene información suficiente, **Cuando** el usuario realiza una consulta, **Entonces** el Tutor responde indicando que no dispone de información fiable para responder.
+
+---
+
+## Historia de Usuario 6 – Buscar referencias externas cuando no hay conocimiento interno (Prioridad: P2)
+
+**Como** usuario,
+
+**quiero** que el Tutor busque referencias externas en la web cuando no exista conocimiento oficial, compartido ni personal sobre mi duda,
+
+**para** obtener una orientación útil en lugar de quedarme sin respuesta, sabiendo que esa información no ha sido validada por la organización.
+
+### Por qué esta prioridad
+
+Reduce los casos de abstención, pero no es la propuesta de valor principal (que es el conocimiento organizacional ya validado), de ahí su prioridad P2.
+
+### Test independiente
+
+Realizar una consulta sin conocimiento oficial, compartido ni personal disponible y comprobar que el Tutor recurre a una búsqueda web antes de abstenerse, identificando la respuesta como procedente de una fuente externa.
+
+### Escenarios de aceptación
+
+1. **Dado** que no existe conocimiento oficial, compartido ni personal suficiente para responder, **Cuando** el usuario realiza la consulta, **Entonces** el Tutor busca referencias externas en la web y, si las encuentra, responde utilizándolas.
+
+2. **Dado** que el Tutor utiliza una referencia externa en la web, **Cuando** responde, **Entonces** identifica explícitamente que la información procede de una fuente externa no validada por la organización.
+
+3. **Dado** que tampoco existen referencias externas fiables en la web, **Cuando** el usuario realiza la consulta, **Entonces** el Tutor informa que no dispone de información fiable para responder (Historia de Usuario 5).
 
 ---
 
@@ -171,9 +199,11 @@ Realizar preguntas para las que no exista conocimiento disponible.
 - Existen varias contribuciones compartidas con soluciones distintas.
 - El conocimiento personal contradice la documentación oficial.
 - Una respuesta requiere combinar varias fuentes de conocimiento.
-- La consulta no tiene información disponible en ninguna fuente.
+- La consulta no tiene información disponible en ninguna fuente, ni siquiera en la web.
 - El usuario realiza varias preguntas diferentes en una misma conversación.
 - El conocimiento utilizado ha sido retirado recientemente.
+- Una referencia externa en la web contradice al conocimiento oficial de la organización.
+- Una referencia externa en la web no puede verificarse como fiable o proviene de una fuente de baja calidad.
 - [NECESITA ACLARACIÓN: ¿debe priorizarse siempre el conocimiento oficial cuando exista?]
 
 ---
@@ -183,16 +213,18 @@ Realizar preguntas para las que no exista conocimiento disponible.
 ## Requisitos funcionales
 
 - **FR-001:** El sistema DEBE permitir realizar consultas en lenguaje natural.
-- **FR-002:** El sistema DEBE responder utilizando únicamente conocimiento disponible dentro del conocimiento organizacional.
+- **FR-002:** El sistema DEBE responder utilizando prioritariamente el conocimiento disponible dentro del conocimiento organizacional (oficial, compartido o personal).
 - **FR-003:** El sistema DEBE identificar el origen de toda la información utilizada en una respuesta.
-- **FR-004:** El sistema DEBE diferenciar claramente conocimiento oficial, conocimiento compartido y conocimiento personal.
+- **FR-004:** El sistema DEBE diferenciar claramente conocimiento oficial, conocimiento compartido, conocimiento personal y referencias externas obtenidas en la web.
 - **FR-005:** El sistema DEBE priorizar el conocimiento oficial cuando existan varias fuentes para responder la misma consulta.
 - **FR-006:** El sistema DEBE indicar cuando una respuesta utiliza varias fuentes de conocimiento.
 - **FR-007:** El sistema DEBE impedir generar respuestas basadas en conocimiento inexistente o no respaldado.
-- **FR-008:** El sistema DEBE informar explícitamente cuando no exista conocimiento suficiente para responder.
+- **FR-008:** El sistema DEBE informar explícitamente cuando no exista conocimiento suficiente para responder, ni en el conocimiento organizacional ni en referencias externas.
 - **FR-009:** El sistema DEBE mantener el contexto de una conversación para responder preguntas relacionadas.
 - **FR-010:** El sistema DEBE utilizar el conocimiento personal únicamente para su propietario.
 - **FR-011:** El sistema DEBE utilizar conocimiento compartido respetando su nivel de confianza y diferenciándolo del conocimiento oficial.
+- **FR-012:** El sistema DEBE buscar referencias externas en la web únicamente cuando el conocimiento oficial, compartido y personal no sea suficiente para responder.
+- **FR-013:** El sistema DEBE señalar explícitamente que una referencia externa en la web no ha sido validada por la organización y debe tratarse con menor nivel de confianza.
 
 ---
 
@@ -219,6 +251,7 @@ Puede corresponder a:
 - Conocimiento oficial.
 - Conocimiento compartido.
 - Conocimiento personal.
+- Referencia externa (web): resultado de una búsqueda externa realizada por el Tutor cuando ninguna de las anteriores aporta una respuesta suficiente. No forma parte del conocimiento organizacional y se presenta siempre marcada como no validada.
 
 ---
 
@@ -246,4 +279,6 @@ Conjunto de consultas y respuestas relacionadas mantenidas por un usuario.
 - El conocimiento personal únicamente puede ser consultado por su propietario.
 - La ausencia de una respuesta fiable debe comunicarse explícitamente al usuario.
 - Es preferible no responder antes que proporcionar información incorrecta.
+- La búsqueda de referencias externas en la web es un recurso secundario, solo se activa cuando el conocimiento organizacional no es suficiente.
+- Las referencias externas nunca se presentan con el mismo nivel de confianza que el conocimiento oficial.
 ```
