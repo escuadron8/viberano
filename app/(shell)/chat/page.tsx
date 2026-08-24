@@ -43,6 +43,7 @@ const GUION_N8N: Omit<Mensaje, "id" | "autor">[] = [
   },
   {
     texto: `Perfecto, entonces piénsalo así: un workflow es como una receta de cocina automática. Cada "nodo" (esos cuadraditos que ves en el lienzo) es un paso de la receta — uno puede decir "cuando llegue un email nuevo", otro "resume ese email con IA", y otro "mándalo a Slack". Tú conectas los pasos con líneas, y n8n los ejecuta solo. ¿Quieres que montemos juntos uno sencillito con tu bandeja de correo como ejemplo?`,
+    fuentes: ["oficial"],
   },
 ];
 
@@ -79,6 +80,7 @@ const MENSAJES_INICIALES_N8N: Mensaje[] = [
     id: "n8n-ia-1",
     autor: "ia",
     texto: `Perfecto, entonces piénsalo así: un workflow es como una receta de cocina automática. Cada "nodo" (esos cuadraditos que ves en el lienzo) es un paso de la receta — uno puede decir "cuando llegue un email nuevo", otro "resume ese email con IA", y otro "mándalo a Slack". Tú conectas los pasos con líneas, y n8n los ejecuta solo. ¿Quieres que montemos juntos uno sencillito con tu bandeja de correo como ejemplo?`,
+    fuentes: ["oficial"],
   },
 ];
 
