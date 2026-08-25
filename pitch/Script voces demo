@@ -1,0 +1,40 @@
+# Tutor — guión de voz (video pitch v4, 90 s)
+
+Locución en español, tono cercano y seguro. Los tiempos son absolutos del vídeo v4
+(`Video Pitch Tutor v4.dc.html`) y coinciden con los subtítulos en pantalla.
+
+Escenas: Hook 0:00 · Problema 0:09 · Solución 0:20 · Cómo funciona 0:26 · Demo 0:31 ·
+Fuentes 1:01 · Equipo 1:12 · Cierre 1:22. Total 1:30.
+
+| Tiempo | Escena | Locución |
+| --- | --- | --- |
+| 0:00 | Hook | ¿Sabes utilizar n8n? Probablemente no del todo. |
+| 0:02 | Hook | Pero ¿qué pasa cuando necesitas hacer algo que nunca has hecho? |
+| 0:10 | Problema | Buscamos documentación, tutoriales, Google, o preguntamos a un compañero. |
+| 0:13 | Problema | Y dedicamos más tiempo a encontrar la respuesta que a hacer la tarea. |
+| 0:20 | Solución | Por eso hemos creado Tutor: tu guía personal en cada nueva herramienta. |
+| 0:27 | Cómo funciona | No necesitas aprender la herramienta entera. Solo qué quieres conseguir. |
+| 0:32 | Demo | Funciona igual con cualquier herramienta. Este es un caso real con n8n. |
+| 0:35 | Demo | Eliges la herramienta que quieres dominar. |
+| 0:41 | Demo | "Acabo de abrir n8n y no tengo ni idea de qué estoy viendo." |
+| 0:45 | Demo | Tutor pregunta si vienes de negocio o de técnico, y te lo explica a tu nivel. |
+| 0:48 | Demo | Y marca de dónde viene la respuesta. |
+| 0:52 | Demo | Después ves tu progreso y las siguientes micro-lecciones. |
+| 1:02 | Fuentes | Tutor busca en cuatro fuentes: oficial, del equipo, tus notas… |
+| 1:06 | Fuentes | …y si no está en ninguna, la propia IA responde. |
+| 1:08 | Fuentes | Tutor las conecta, así que siempre tienes respuesta. |
+| 1:13 | Equipo | Nuestro mayor aprendizaje ha sido como equipo: descubrimos que sí es posible construir con vibe coding, casi sin conocimientos previos. |
+| 1:18 | Equipo | Y que trabajar apoyados en una comunidad nos hizo avanzar mucho más rápido. |
+| 1:22 | Cierre | Si partiendo de cero pudimos construir Tutor… |
+| 1:24 | Cierre | ¿qué más podemos construir? |
+| 1:26 | Cierre | No necesitamos saberlo todo para empezar. |
+
+**Notas de grabación**
+
+- Duración total del vídeo: 1:30. La locución completa cabe holgada a ritmo normal;
+  las pausas naturales están en los cortes de escena (0:09, 0:20, 0:26, 0:31, 1:01, 1:12, 1:22).
+- La escena Demo (0:31–1:01) es la grabación real de la app; deja respirar el vídeo
+  entre líneas, no encadenes frases.
+- Si grabas voz, apaga los subtítulos en el panel de Tweaks para no duplicar el mensaje.
+- Cambios respecto a la v3: hook con n8n, Problema es vídeo real, cuatro fuentes
+  (Oficial / Compartido / Personal / Web) y se ha eliminado la escena Diferencial.
