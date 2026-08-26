@@ -4,6 +4,8 @@
 
 Tutor es un tutor conversacional que ayuda a las personas a aprender un software nuevo en el momento en que lo necesitan, en lugar de buscar entre documentación, tutoriales de YouTube o preguntar a un compañero. Proyecto construido para el concurso **Viberano 2026**.
 
+🔗 **App desplegada**: [tutor-rose-six.vercel.app](https://tutor-rose-six.vercel.app/)
+
 ## El problema
 
 Cuando una empresa migra o adopta una herramienta nueva (Salesforce, Jira, n8n...), cada empleado se enfrenta a la misma pregunta en un momento distinto: *"¿cómo hago esto que nunca he hecho?"*. La respuesta suele estar dispersa entre manuales estáticos, vídeos genéricos que no encajan con el caso concreto, o la disponibilidad de un compañero. El resultado es tiempo perdido, frustración y dependencia de terceros justo en el momento en que se necesita avanzar.
