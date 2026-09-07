@@ -1,6 +1,7 @@
 "use client";
 
 import { AnilloProgreso } from "@/components/AnilloProgreso";
+import { BotonCerrarSesion } from "@/components/BotonCerrarSesion";
 import { CabeceraMovil } from "@/components/CabeceraMovil";
 import { Tarjeta } from "@/components/Tarjeta";
 import { useHerramienta } from "@/components/HerramientaProvider";
@@ -17,7 +18,11 @@ export default function ProgresoPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <CabeceraMovil titulo={`Tu progreso en ${nombreHerramienta}.`} hrefAtras="/chat" />
+      <CabeceraMovil
+        titulo={`Tu progreso en ${nombreHerramienta}.`}
+        hrefAtras="/chat"
+        accion={<BotonCerrarSesion />}
+      />
 
       <main className="flex flex-1 flex-col items-center gap-xl px-lg pb-xl pt-lg">
         <AnilloProgreso progreso={65} tamano={176} grosor={14} etiqueta="Dominio Actual" />
