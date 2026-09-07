@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { crearClienteNavegador } from "@/lib/supabase/client";
+import { enviarEnlaceMagico } from "@/lib/supabase/enviarEnlaceMagico";
 import { Boton } from "@/components/Boton";
 import { CampoTexto } from "@/components/CampoTexto";
 
@@ -20,13 +20,7 @@ export function FormularioLogin({ next, errorInicial }: FormularioLoginProps) {
     e.preventDefault();
     setEstado("enviando");
 
-    const supabase = crearClienteNavegador();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
-      },
-    });
+    const { error } = await enviarEnlaceMagico(email, next);
 
     setEstado(error ? "error" : "enviado");
   }
