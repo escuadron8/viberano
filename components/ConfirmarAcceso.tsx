@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
@@ -15,56 +15,50 @@ type ConfirmarAccesoProps = {
   email?: string;
 };
 
-// T-13: la plantilla de Magic Link de Supabase por defecto (sin SMTP propio,
-// no editable) redirige aquí con los tokens de sesión en el fragmento de la
-// URL (#access_token=...&refresh_token=...), no como query param — por eso
-// esto se procesa en cliente y no en un route handler de servidor, que nunca
-// llega a ver el fragmento. Si en el futuro se configura SMTP propio y se
-// cambia la plantilla al formato token_hash, este mismo componente ya sabe
-// procesar también ese caso.
+// SPIKE (spike/magic-link-confirmation): variante experimental de T-13 que
+// no consume el token al montar el componente (eso es justo lo que dispara
+// el prefetch de los escáneres de seguridad del correo). Aquí solo se leen
+// los parámetros de la URL; la llamada a Supabase que gasta el token de un
+// solo uso queda detrás del clic explícito del usuario en "Confirmar e
+// iniciar sesión". Sigue soportando tanto el fragmento #access_token/
+// #refresh_token (plantilla por defecto de Supabase) como token_hash/type
+// (formato con SMTP propio) — ver la nota original de T-13 en el commit
+// 69b4e25 para el porqué de cada caso.
 export function ConfirmarAcceso({ next, tokenHash, type, email }: ConfirmarAccesoProps) {
   const router = useRouter();
-  const [error, setError] = useState(false);
+  const [estado, setEstado] = useState<"inicial" | "confirmando" | "error">("inicial");
   const [reenvio, setReenvio] = useState<"inicial" | "enviando" | "enviado" | "error">("inicial");
 
-  useEffect(() => {
-    let cancelado = false;
+  async function confirmar() {
+    setEstado("confirmando");
+    const supabase = crearClienteNavegador();
 
-    async function procesar() {
-      const supabase = crearClienteNavegador();
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const accessToken = hash.get("access_token");
+    const refreshToken = hash.get("refresh_token");
 
-      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-      const accessToken = hash.get("access_token");
-      const refreshToken = hash.get("refresh_token");
-
-      if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (!error) {
-          router.replace(next);
-          return;
-        }
-      } else if (tokenHash && type) {
-        const { error } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: type as EmailOtpType,
-        });
-        if (!error) {
-          router.replace(next);
-          return;
-        }
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (!error) {
+        router.replace(next);
+        return;
       }
-
-      if (!cancelado) setError(true);
+    } else if (tokenHash && type) {
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: type as EmailOtpType,
+      });
+      if (!error) {
+        router.replace(next);
+        return;
+      }
     }
 
-    procesar();
-    return () => {
-      cancelado = true;
-    };
-  }, [next, tokenHash, type, router]);
+    setEstado("error");
+  }
 
   async function reenviar() {
     if (!email) return;
@@ -73,7 +67,7 @@ export function ConfirmarAcceso({ next, tokenHash, type, email }: ConfirmarAcces
     setReenvio(error ? "error" : "enviado");
   }
 
-  if (error) {
+  if (estado === "error") {
     if (reenvio === "enviado") {
       return (
         <div className="flex flex-col gap-sm text-center">
@@ -112,7 +106,18 @@ export function ConfirmarAcceso({ next, tokenHash, type, email }: ConfirmarAcces
 
   return (
     <div className="flex flex-col gap-sm text-center">
-      <h1 className="text-display-xl text-ink-base">Verificando acceso…</h1>
+      <h1 className="text-display-xl text-ink-base">Confirma tu acceso.</h1>
+      <p className="text-body-md text-ink-secondary">
+        Pulsa el botón para iniciar sesión con el enlace que recibiste por correo.
+      </p>
+      <Boton
+        variante="primario"
+        className="w-full"
+        onClick={confirmar}
+        disabled={estado === "confirmando"}
+      >
+        {estado === "confirmando" ? "Confirmando…" : "Confirmar e iniciar sesión"}
+      </Boton>
     </div>
   );
 }

@@ -236,6 +236,7 @@ Cada fase es desplegable por sí sola. Si algo se tuerce a mitad de semana, lo c
 |---|---|
 | F001: *¿debe priorizarse siempre el conocimiento oficial?* | **Sí.** Ya lo dice FR-005 y es coherente con las suposiciones de ambas specs. Cuando oficial y compartido se contradicen, el Tutor responde con el oficial y lo indica. |
 | F002: *¿debe existir moderación antes de publicar conocimiento compartido?* | **No en el MVP.** Se publica directamente, siempre etiquetado como "conocimiento de compañeros, no validado". La moderación es el flujo de F002 HU7/FR-009-010, que queda fuera: es un workflow de aprobación completo (estados, notificaciones, rol revisor) y no aporta nada a la demo. La etiqueta ya protege al usuario, que es lo que importa. |
+| T-13: *¿cómo evitar que los escáneres de seguridad del correo consuman el magic link antes que el usuario?* | La plantilla de Magic Link en Supabase enlaza directo a `/auth/confirm?token_hash=...` en vez de al endpoint `/verify` de Supabase (que era donde el prefetch gastaba el token), y el consumo del token queda detrás de un clic explícito del usuario, no del montaje de la página. Detalle en [docs/historial.md](../docs/historial.md). |
 
 ---
 

@@ -24,7 +24,7 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 | T-10 | Proyecto Supabase y clientes | 2 | T-01 | 🔴 proyecto Supabase |
 | T-11 | Esquema de base de datos | 2 | T-10 | |
 | T-12 | Políticas RLS + prueba de aislamiento | 2 | T-11 | |
-| T-13 | Autenticación por magic link | 2 | T-10 | |
+| T-13 | Autenticación por magic link | 2 | T-10 | ✅ resuelto |
 | T-14 | Formato del corpus y script de carga | 2 | T-11 | |
 | T-15 | Carga del corpus oficial real | 2 | T-14 | 🔴 **corpus escrito** |
 | T-16 | Función `buscar()` — FTS aislada | 3a | T-15 | |
@@ -126,6 +126,7 @@ Las políticas de la tabla de [plan.md §4](plan.md): `oficial` legible por todo
 Alta y acceso por email, sesión persistida, rutas protegidas, cierre de sesión.
 
 - **Prueba**: pedir el enlace desde el móvil, abrirlo desde el correo del móvil y aterrizar autenticado en `/software`. Recargar y seguir dentro.
+- **Resuelto**: los escáneres de seguridad de los clientes de correo (prefetch automático del enlace) consumían el token de un solo uso antes de que el usuario hiciera clic. Solución: la plantilla de Magic Link en Supabase enlaza directo a `/auth/confirm` con `token_hash` (sin pasar por el endpoint `/verify` de Supabase, que era donde se consumía), y `ConfirmarAcceso` (`components/ConfirmarAcceso.tsx`) ya no gasta el token al montarse — solo al pulsar el botón "Confirmar e iniciar sesión". Detalle completo en [docs/historial.md](../docs/historial.md).
 
 ### T-14 · Formato del corpus y script de carga
 Definir el formato de los documentos (Markdown con frontmatter: `herramienta`, `titulo`) y un script que los lea de una carpeta e inserte en `conocimiento` con `tipo = 'oficial'`. Idempotente: reejecutarlo no duplica.
