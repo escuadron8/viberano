@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "cargar-corpus": "node scripts/cargar-corpus.mts"
+    "cargar-corpus": "node scripts/cargar-corpus.mts",
+    "probar-buscar": "node scripts/probar-buscar.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
