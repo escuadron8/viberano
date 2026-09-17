@@ -4,6 +4,22 @@ Registro de hitos, decisiones técnicas y problemas resueltos que no quedan del 
 
 ---
 
+## 2026-09-17 — Umbral de relevancia: el FTS no separa perfectamente con un corpus pequeño y genérico (T-17)
+
+**Contexto**: al fijar el umbral que decide si hay "suficiente" conocimiento para responder (FR-008), se probó contra las 10 preguntas conocidas de T-16 más 5 preguntas deliberadamente fuera del corpus. El corpus usado era el de relleno de 15 documentos genéricos de Salesforce (no el corpus real de T-15).
+
+**Problema**: con `websearch_to_tsquery` (AND implícito entre palabras) muchas preguntas fuera de tema no encontraban nada — pero también fallaban preguntas legítimas si traían alguna palabra incidental ("dos", "para") ausente del documento correcto. Cambiar a una consulta con OR entre palabras (`buscar()`, ver comentarios en `supabase/migrations/0003_buscar.sql`) arregló eso, pero abrió el problema contrario: con un corpus tan pequeño y de vocabulario administrativo genérico ("organización", "configuración", "campo"), una sola palabra compartida bastaba para que apareciera un resultado sin relación real con la pregunta.
+
+**Mitigación aplicada**: `buscar()` ahora también devuelve `coincidencias` (cuántas palabras distintas de la pregunta aparecen en el documento) y exige al menos 2 como filtro estructural. `lib/buscar.ts` añade `recuperar()`, que exige además `rank >= 0.042` y `coincidencias >= 3` antes de considerar un resultado suficiente.
+
+**Resultado de la prueba**: 10/10 preguntas cubiertas pasan el umbral; 4/5 preguntas fuera de corpus quedan correctamente por debajo. La quinta ("¿Cómo activo las recomendaciones de Einstein para oportunidades?") empata *exactamente* en rank y en coincidencias con una pregunta cubierta legítima ("¿Cómo actualizo muchos registros al mismo tiempo?", que coincide por "registro"/"oportunidad" con el doc de conversión de leads). Es un empate numérico real, no un umbral mal puesto — ninguna combinación de estas dos señales los separa.
+
+**Decisión**: no se activa `pgvector` (plan B de `plan.md` §8) por este único caso. El corpus de prueba es contenido genérico generado por Claude, no el corpus real de T-15; con 20-30 documentos reales y más específicos de una sola herramienta, la superposición de vocabulario genérico debería pesar menos. **Recalibrar `UMBRAL_RELEVANCIA` y `MINIMO_COINCIDENCIAS` en `lib/buscar.ts` en cuanto se cargue el corpus real**, repitiendo `npm run probar-umbral` con preguntas propias de ese corpus.
+
+**Archivos tocados**: `supabase/migrations/0003_buscar.sql`, `lib/buscar.ts`, `scripts/probar-umbral.mts`.
+
+---
+
 ## 2026-09-11 — Enlace mágico: fix del prefetch de escáneres de correo (T-13)
 
 **Problema**: los escáneres de seguridad de los clientes de correo (Gmail, Outlook Safe Links, etc.) hacen una petición GET de comprobación al enlace del magic link antes de que el usuario haga clic. Con la plantilla por defecto de Supabase, esa petición llega al endpoint `/auth/v1/verify` del propio Supabase, que consume ahí mismo el token de un solo uso — así que cuando el usuario real hacía clic, el enlace ya estaba gastado.

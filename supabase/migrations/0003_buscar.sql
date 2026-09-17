@@ -22,8 +22,22 @@
 -- devolver algo — una palabra irrelevante para la intención de la pregunta
 -- bastaba para no encontrar nada. Con "o" alcanza con que coincida alguna
 -- palabra, y ts_rank ya premia a los documentos que coinciden en más.
+--
+-- T-17: con un corpus pequeño y de vocabulario genérico, una sola palabra
+-- compartida (p. ej. "oportunidad") ya basta para que algo aparezca como
+-- resultado aunque el tema no tenga nada que ver — eso hacía imposible fijar
+-- un umbral de `rank` que separara limpiamente lo cubierto de lo que no.
+-- `coincidencias` cuenta cuántas palabras distintas de la pregunta aparecen
+-- en el documento; exigir al menos 2 (o todas, si la pregunta solo trae una
+-- palabra significativa) descarta la mayoría de esos falsos positivos antes
+-- de mirar siquiera el rank.
 
-create or replace function public.buscar(
+-- Postgres no deja cambiar la forma de lo que devuelve una función con
+-- "create or replace" (aquí se añadió la columna `coincidencias`) — hay que
+-- borrar la versión anterior primero.
+drop function if exists public.buscar(text, text, uuid);
+
+create function public.buscar(
   consulta text,
   p_herramienta text,
   p_usuario_id uuid default null
@@ -34,14 +48,19 @@ returns table (
   herramienta text,
   titulo text,
   contenido text,
-  rank real
+  rank real,
+  coincidencias int
 )
 language sql
 stable
 as $$
-  with consulta_tsquery as (
-    select to_tsquery('spanish', string_agg(lexeme, ' | ')) as tsquery
+  with lexemas as (
+    select lexeme
     from unnest(tsvector_to_array(to_tsvector('spanish', consulta))) as lexeme
+  ),
+  consulta_tsquery as (
+    select to_tsquery('spanish', string_agg(lexeme, ' | ')) as tsquery
+    from lexemas
   )
   select
     conocimiento.id,
@@ -49,7 +68,12 @@ as $$
     conocimiento.herramienta,
     conocimiento.titulo,
     conocimiento.contenido,
-    ts_rank(conocimiento.busqueda, consulta_tsquery.tsquery) as rank
+    ts_rank(conocimiento.busqueda, consulta_tsquery.tsquery) as rank,
+    (
+      select count(*)::int
+      from lexemas
+      where conocimiento.busqueda @@ to_tsquery('spanish', lexemas.lexeme)
+    ) as coincidencias
   from conocimiento, consulta_tsquery
   where conocimiento.herramienta = p_herramienta
     and conocimiento.estado = 'activo'
@@ -59,6 +83,10 @@ as $$
       conocimiento.tipo <> 'personal'
       or conocimiento.autor_id = p_usuario_id
     )
+    and (
+      select count(*) from lexemas
+      where conocimiento.busqueda @@ to_tsquery('spanish', lexemas.lexeme)
+    ) >= least(2, (select count(*) from lexemas))
   order by rank desc
   limit 5;
 $$;
