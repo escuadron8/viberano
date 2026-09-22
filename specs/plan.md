@@ -197,11 +197,11 @@ El calendario de abajo es el **del concurso, ya caducado**; se conserva porque e
 
 ### Definición de "hecho" del MVP
 
-- [ ] URL pública que se abre e instala desde un móvil.
-- [ ] Las 4 pantallas de `Design-tutor.md`, recorribles sin explicaciones.
-- [ ] Una pregunta cubierta por la documentación recibe respuesta correcta **con chip de origen visible**.
-- [ ] Una pregunta fuera del corpus recibe "no dispongo de información fiable" — **este es el caso que hay que enseñar en la demo**, es lo que diferencia a TUTOR de un chatbot cualquiera.
-- [ ] Ninguna respuesta cita una fuente inexistente (verificación del paso [5] activa).
+- [ ] URL pública que se abre e **instala** desde un móvil. *(Se abre — falta que sea instalable: T-23, PWA.)*
+- [x] Las 4 pantallas de `Design-tutor.md`, recorribles sin explicaciones.
+- [x] Una pregunta cubierta por la documentación recibe respuesta correcta **con chip de origen visible**. *(Probado en móvil el 2026-09-23, sobre el corpus de relleno; repetir con el corpus real de T-15.)*
+- [x] Una pregunta fuera del corpus recibe "no dispongo de información fiable" — **este es el caso que hay que enseñar en la demo**, es lo que diferencia a TUTOR de un chatbot cualquiera. *(Probado en móvil el 2026-09-23.)*
+- [x] Ninguna respuesta cita una fuente inexistente (verificación del paso [5] activa, con test automatizado que lo sostiene).
 
 ### Después del MVP (pendiente de fecha)
 
@@ -264,5 +264,5 @@ Se descarta explícitamente, para que nadie lo dé por supuesto: moderación y p
 
 El arranque de este plan está hecho: Fase 0 desplegada, cuentas creadas y el motor de respuesta respondiendo. En paralelo ahora:
 
-1. **Código**: T-21 está construido — la pantalla de chat ya va contra `/api/consulta`, con chips de origen, abstención y persistencia del turno. Queda **probarlo en un móvil real con preguntas de verdad** para cerrarlo, y después T-22 (contexto de conversación). Estado tarea a tarea en [tasks.md](tasks.md).
+1. **Código**: T-21 cerrado — el chat real funciona de punta a punta, probado en un móvil contra el despliegue de Vercel: pregunta cubierta → respuesta con su chip, pregunta fuera del corpus → abstención. Siguiente, **T-22** (contexto de conversación). Estado tarea a tarea en [tasks.md](tasks.md).
 2. **Equipo**: **el corpus oficial real (T-15)**. Sigue siendo lo único que no se puede adelantar desde el código, y lo que marca la diferencia entre una demo de verdad y un pipeline probado con relleno.

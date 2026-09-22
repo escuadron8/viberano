@@ -34,11 +34,12 @@ El repositorio empezó siendo un MVP de interfaz con respuestas guionizadas, y d
 - Acceso por enlace mágico con Supabase Auth, resistente al prefetch de los escáneres de correo.
 - Postgres con el esquema de conocimiento, políticas RLS por tipo de fuente y búsqueda full-text en español con umbral de relevancia y orden `oficial > compartido > personal`.
 - `/api/consulta`: si no hay nada por encima del umbral se abstiene **sin llamar al modelo**; si lo hay, llama a Gemini con salida estructurada y **verifica en servidor que cada fuente citada existe de verdad** entre los fragmentos enviados, descartando la respuesta entera si no cuadra.
+- **El chat conectado de punta a punta**, probado en un móvil: una pregunta cubierta por el corpus responde con su chip de origen y una pregunta fuera de él recibe la abstención. Cada turno (pregunta, respuesta y fuentes citadas) se guarda para poder auditarlo después.
 
 **Lo que falta**:
 
 - **El corpus oficial real**: lo que hay en `corpus/` son 15 documentos de relleno para probar el pipeline. Es el bloqueo principal, y de él depende recalibrar el umbral de relevancia.
-- **La prueba en un móvil real del chat conectado**: la pantalla ya llama a `/api/consulta` y pinta chips de origen y abstenciones, pero falta recorrerlo en un teléfono con preguntas de verdad.
+- **El corpus oficial real** (arriba) es también lo que falta para que el chat luzca: hoy responde sobre los 15 documentos de relleno.
 - Contexto de conversación entre turnos, PWA instalable y el recorrido end-to-end en un móvil limpio.
 
 ## Cómo se prueba
