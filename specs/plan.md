@@ -1,10 +1,9 @@
 # Plan de construcción — MVP móvil de TUTOR
 
-**Estado**: propuesta · **Base**: [F001](specs/F001-Consultar%20dudas.md), [F002](specs/F002%20-%20Base%20de%20conocimiento.md), [Design-tutor.md](diseño/Design-tutor.md), [inception.md](docs/inception.md)
+**Estado**: en construcción · **Base**: [F001](specs/F001-Consultar%20dudas.md), [F002](specs/F002%20-%20Base%20de%20conocimiento.md), [Design-tutor.md](diseño/Design-tutor.md), [inception.md](docs/inception.md)
 
-> **Hito comprometido: martes 18 de agosto de 2026.**
-> Alcance para esa fecha: **las 4 pantallas navegables + el motor de respuesta funcionando** sobre conocimiento oficial real, con citación de fuentes y abstención (Fases 0-3).
-> Días hábiles disponibles desde hoy (viernes 7): **7** — hoy, 10-14 y el 17.
+> **Alcance del MVP**: **las 4 pantallas navegables + el motor de respuesta funcionando** sobre conocimiento oficial real, con citación de fuentes y abstención (Fases 0-3).
+> **Sin fecha comprometida.** El hito del concurso Viberano (18 de agosto de 2026) ya no aplica: el proyecto continúa al margen del concurso, a ritmo propio. El estado tarea a tarea vive en [tasks.md](tasks.md).
 
 ---
 
@@ -178,9 +177,11 @@ create table mensaje (
 
 ---
 
-## 5. Calendario hasta el 18 de agosto
+## 5. Orden de construcción
 
-Cada fase es desplegable por sí sola. Si algo se tuerce a mitad de semana, lo construido sigue siendo una demo coherente.
+Cada fase es desplegable por sí sola. Si algo se tuerce a mitad de camino, lo construido sigue siendo una demo coherente.
+
+El calendario de abajo es el **del concurso, ya caducado**; se conserva porque el orden de las fases y los bloqueos del equipo siguen siendo válidos, pero las fechas no. El estado real de cada tarea está en [tasks.md](tasks.md).
 
 | Día | Fase | Qué se hace | Os bloquea a vosotros |
 |---|---|---|---|
@@ -194,7 +195,7 @@ Cada fase es desplegable por sí sola. Si algo se tuerce a mitad de semana, lo c
 | **Lun 17** | Cierre | Pruebas end-to-end en móvil, ajuste del corpus según lo que falle, PWA (manifest + icono), guion de demo. | Ensayo de la demo. |
 | **Mar 18** | **Entrega** | | |
 
-### Definición de "hecho" para el 18
+### Definición de "hecho" del MVP
 
 - [ ] URL pública que se abre e instala desde un móvil.
 - [ ] Las 4 pantallas de `Design-tutor.md`, recorribles sin explicaciones.
@@ -202,7 +203,7 @@ Cada fase es desplegable por sí sola. Si algo se tuerce a mitad de semana, lo c
 - [ ] Una pregunta fuera del corpus recibe "no dispongo de información fiable" — **este es el caso que hay que enseñar en la demo**, es lo que diferencia a TUTOR de un chatbot cualquiera.
 - [ ] Ninguna respuesta cita una fuente inexistente (verificación del paso [5] activa).
 
-### Después del 18 (pendiente de fecha)
+### Después del MVP (pendiente de fecha)
 
 - **Fase 4 — Conocimiento del usuario**: notas personales (F002 HU3), compartirlas (F002 HU4), consultarlas (F002 HU5). El motor de la Fase 3 las recoge sin cambios: solo aparecen más filas en la recuperación, con su `tipo`. Cubre HU3 y HU4 (P2) de F001.
 - **Fase 5 — Administración y progreso**: alta/actualización/retirada de conocimiento oficial (F002 HU1, HU2, HU8) mediante un formulario protegido por rol, no un CMS. Pantalla de progreso alimentada por métricas reales.
@@ -227,7 +228,7 @@ Cada fase es desplegable por sí sola. Si algo se tuerce a mitad de semana, lo c
 | F002 FR-008 | 4 | Retirar el compartido cambia su `estado`; la copia personal sobrevive |
 | F002 FR-009, 010 | — | **Fuera del MVP** (ver §7) |
 
-**Para el 18 de agosto quedan cubiertos todos los requisitos P1 de F001** (HU1, HU2 y HU5) — que son, según la propia spec, la propuesta de valor del producto.
+**El MVP cubre todos los requisitos P1 de F001** (HU1, HU2 y HU5) — que son, según la propia spec, la propuesta de valor del producto.
 
 ---
 
@@ -249,7 +250,7 @@ Cada fase es desplegable por sí sola. Si algo se tuerce a mitad de semana, lo c
 | El FTS no encuentra lo relevante (sinónimos, "cómo hago X" vs. la redacción del doc) | El jueves 13, preguntas obviamente cubiertas devuelven "no lo sé" | Activar `pgvector` en Supabase + embeddings (Voyage tiene free tier). **Solo cambia la función `buscar()`**; el resto del pipeline es idéntico. Por eso está aislada desde el principio. |
 | Latencia percibida alta en móvil | >6-7 s hasta la respuesta | Bajar `effort` a `low`, reducir el nº de fragmentos enviados, y añadir streaming si aun así molesta |
 | Coste de API se dispara en pruebas | — | El umbral de la Fase 3 ya evita llamar al modelo en el peor caso. Prompt caching en el system. Límite de consultas por usuario/día si hiciera falta. |
-| Fuga de conocimiento personal | — | RLS desde la Fase 2. En el MVP del 18 no hay conocimiento personal todavía, así que el riesgo real llega con la Fase 4: **probar explícitamente con dos usuarios antes de cerrarla** |
+| Fuga de conocimiento personal | — | RLS desde la Fase 2. En el MVP no hay conocimiento personal todavía, así que el riesgo real llega con la Fase 4: **probar explícitamente con dos usuarios antes de cerrarla** |
 
 ---
 
@@ -259,9 +260,9 @@ Se descarta explícitamente, para que nadie lo dé por supuesto: moderación y p
 
 ---
 
-## 10. Primer paso
+## 10. Siguiente paso
 
-**Hoy, viernes 7**, en paralelo:
+El arranque de este plan está hecho: Fase 0 desplegada, cuentas creadas y el motor de respuesta respondiendo. En paralelo ahora:
 
-1. **Yo**: Fase 0 completa y desplegada — una URL viva con la paleta y la tipografía correctas.
-2. **Vosotros**: crear las cuentas (GitHub/Vercel, Supabase, Gemini) y **empezar el corpus**. Es lo único que no puedo adelantar por vosotros y lo que marca si el 18 hay demo o no.
+1. **Código**: cerrar T-20 con su test de cita inventada y construir T-21 (chat real conectado a `/api/consulta`). Estado tarea a tarea en [tasks.md](tasks.md).
+2. **Equipo**: **el corpus oficial real (T-15)**. Sigue siendo lo único que no se puede adelantar desde el código, y lo que marca la diferencia entre una demo de verdad y un pipeline probado con relleno.

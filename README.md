@@ -2,7 +2,7 @@
 
 **Tu guía personal en cada nueva herramienta.**
 
-Tutor es un tutor conversacional que ayuda a las personas a aprender un software nuevo en el momento en que lo necesitan, en lugar de buscar entre documentación, tutoriales de YouTube o preguntar a un compañero. Proyecto construido para el concurso **Viberano 2026**.
+Tutor es un tutor conversacional que ayuda a las personas a aprender un software nuevo en el momento en que lo necesitan, en lugar de buscar entre documentación, tutoriales de YouTube o preguntar a un compañero. Proyecto nacido en el concurso **Viberano 2026**, hoy en desarrollo al margen de él y sin fecha de entrega comprometida.
 
 🔗 **App desplegada**: [tutor-rose-six.vercel.app](https://tutor-rose-six.vercel.app/)
 
@@ -26,19 +26,39 @@ Lo que Tutor **no** es: un LMS de creación de cursos, un sustituto del soporte 
 
 ## Estado del proyecto
 
-Este repositorio contiene el **MVP de interfaz** del concurso: las pantallas de onboarding, selección de herramienta, chat y progreso, construidas con el sistema de diseño completo (ver [diseño/Design-tutor.md](diseño/Design-tutor.md)). El chat de demo funciona con respuestas guionizadas para poder mostrar en vivo el comportamiento clave del producto (citación de fuentes y abstención) sin depender de infraestructura externa durante la presentación.
+El repositorio empezó siendo un MVP de interfaz con respuestas guionizadas, y desde entonces se ha construido también el motor real por detrás. El desglose tarea a tarea, con el estado de cada una, está en [specs/tasks.md](specs/tasks.md); la arquitectura, en [specs/plan.md](specs/plan.md).
 
-La arquitectura completa (Postgres + búsqueda full-text, RLS para separar conocimiento personal, y la llamada real a la API de Gemini con verificación de citas en servidor) está diseñada en [specs/plan.md](specs/plan.md) y desglosada tarea a tarea en [specs/tasks.md](specs/tasks.md), pero no forma parte de este MVP de interfaz.
+**Lo que ya funciona**:
+
+- Las 4 pantallas del sistema de diseño (onboarding, selección de herramienta, chat y progreso) desplegadas y revisadas en móvil, más `/catalogo` con los componentes aislados (ver [diseño/Design-tutor.md](diseño/Design-tutor.md)).
+- Acceso por enlace mágico con Supabase Auth, resistente al prefetch de los escáneres de correo.
+- Postgres con el esquema de conocimiento, políticas RLS por tipo de fuente y búsqueda full-text en español con umbral de relevancia y orden `oficial > compartido > personal`.
+- `/api/consulta`: si no hay nada por encima del umbral se abstiene **sin llamar al modelo**; si lo hay, llama a Gemini con salida estructurada y **verifica en servidor que cada fuente citada existe de verdad** entre los fragmentos enviados, descartando la respuesta entera si no cuadra.
+
+**Lo que falta**:
+
+- **El corpus oficial real**: lo que hay en `corpus/` son 15 documentos de relleno para probar el pipeline. Es el bloqueo principal, y de él depende recalibrar el umbral de relevancia.
+- **Conectar el chat al motor**: la pantalla de chat todavía responde con el guion de demo, no con `/api/consulta`.
+- Contexto de conversación entre turnos, PWA instalable y el recorrido end-to-end en un móvil limpio.
 
 ## Cómo se prueba
 
-No hay backend ni suite de tests automatizados en este MVP; la verificación es manual, sobre la propia app:
+No hay suite de tests automatizados todavía; la verificación es manual, sobre la propia app y sobre unos scripts de comprobación:
 
 ```bash
 npm install
 npm run dev      # http://localhost:3000, recorre las 4 pantallas
 npm run lint      # ESLint (config de Next.js)
 npm run build     # build de producción
+```
+
+Los scripts del motor necesitan las variables de [.env.example](.env.example) en un `.env.local` (Supabase y una `GEMINI_API_KEY` del free tier):
+
+```bash
+npm run cargar-corpus    # carga corpus/ en la tabla `conocimiento` (idempotente)
+npm run probar-buscar    # 10 preguntas conocidas contra la búsqueda full-text
+npm run probar-umbral    # las anteriores + 5 fuera de corpus: comprueba la abstención
+npm run probar-ia        # contrato de respuesta de Gemini: cita cuando puede, se abstiene cuando no
 ```
 
 - Recorre el flujo completo en un viewport móvil (la app es mobile-first): onboarding → selección de software → chat → progreso.
@@ -56,14 +76,19 @@ Todo el código de este repositorio se ha escrito mediante **vibe coding**: el e
 |---|---|
 | Framework | Next.js 16 (App Router) + React 19 + TypeScript |
 | Estilos | Tailwind CSS v4, tokens propios del sistema de diseño de Tutor |
+| Datos y sesión | Supabase (Postgres + Auth por enlace mágico + RLS), búsqueda full-text en español |
+| Motor de respuesta | API de Gemini (`gemini-3.6-flash`, free tier) con salida estructurada y verificación de citas en servidor |
 | Despliegue | Vercel |
-| Planificado, fuera de este MVP | Supabase (Postgres + Auth + RLS) y API de Gemini para el motor de respuesta real — ver [specs/plan.md](specs/plan.md) |
 
 ## Estructura del repo
 
 ```
-app/            rutas de Next.js (onboarding, selección, chat, progreso, catálogo)
+app/            rutas de Next.js (onboarding, selección, chat, progreso, catálogo) y /api
 components/     componentes del sistema de diseño (Boton, Tarjeta, BurbujaChat, ChipOrigen...)
+lib/            motor de respuesta: buscar.ts (recuperación) e ia.ts (cliente de Gemini)
+supabase/       migraciones: esquema, políticas RLS y función buscar()
+corpus/         documentos de conocimiento oficial + FORMATO.md para quien lo escriba
+scripts/        carga del corpus y scripts de comprobación del motor
 diseño/         especificación visual del producto
 docs/           inception ágil del proyecto (propósito, alcance, riesgos)
 specs/          especificación funcional, plan de construcción y desglose de tareas
