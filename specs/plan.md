@@ -264,5 +264,5 @@ Se descarta explícitamente, para que nadie lo dé por supuesto: moderación y p
 
 El arranque de este plan está hecho: Fase 0 desplegada, cuentas creadas y el motor de respuesta respondiendo. En paralelo ahora:
 
-1. **Código**: cerrar T-20 con su test de cita inventada y construir T-21 (chat real conectado a `/api/consulta`). Estado tarea a tarea en [tasks.md](tasks.md).
+1. **Código**: T-21 está construido — la pantalla de chat ya va contra `/api/consulta`, con chips de origen, abstención y persistencia del turno. Queda **probarlo en un móvil real con preguntas de verdad** para cerrarlo, y después T-22 (contexto de conversación). Estado tarea a tarea en [tasks.md](tasks.md).
 2. **Equipo**: **el corpus oficial real (T-15)**. Sigue siendo lo único que no se puede adelantar desde el código, y lo que marca la diferencia entre una demo de verdad y un pipeline probado con relleno.

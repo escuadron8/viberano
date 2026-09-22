@@ -12,16 +12,17 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 
 ## Dónde nos quedamos
 
-*Actualizado el 2026-09-22, al cerrar T-20.*
+*Actualizado el 2026-09-23, al construir T-21.*
 
 **Cerradas**: T-01 → T-11, T-13, T-14, T-16 → T-20. Toda la Fase 0, la Fase 1, la Fase 2 (salvo T-15), la Fase 3a y el motor de respuesta de la Fase 3b están hechos: `/api/consulta` responde, se abstiene y descarta las citas inventadas, con un test automatizado que lo sostiene.
 
 **Construidas pero sin cerrar** (🟡):
-- **T-12** — las políticas RLS están escritas y aplicadas (`supabase/migrations/0002_rls.sql`), pero la prueba de aislamiento con dos usuarios (FR-010) no consta ejecutada en ningún sitio. Es la prueba que la propia tarea llama "la más importante de la fase". Es la única deuda de prueba que queda.
+- **T-12** — las políticas RLS están escritas y aplicadas (`supabase/migrations/0002_rls.sql`), pero la prueba de aislamiento con dos usuarios (FR-010) no consta ejecutada en ningún sitio. Es la prueba que la propia tarea llama "la más importante de la fase".
+- **T-21** — la pantalla de chat ya va contra `/api/consulta` de verdad, con chips de origen, abstención, estados de carga y error, y persistencia del turno en `mensaje`. Falta **su prueba: el recorrido en un móvil real con preguntas de verdad** (una cubierta por el corpus, una fuera). Los caminos de servidor están cubiertos por `npm test` (19 tests), pero el recorrido completo autenticado solo lo puede hacer una persona con sesión abierta.
 
 **El repo ya tiene suite de tests**: `npm test` (Vitest, ver [docs/historial.md](../docs/historial.md), entrada del 2026-09-22). De aquí en adelante, una tarea cuya prueba se pueda automatizar debería traer su test.
 
-**Siguiente en el camino crítico**: **T-21** (chat real conectado), que ya tiene sus dependencias cerradas — se puede construir contra el corpus de relleno. En paralelo, **T-15 sigue siendo el riesgo nº1**: sin el corpus real no se puede recalibrar el umbral de T-17 ni probar T-21 con preguntas de verdad.
+**Siguiente en el camino crítico**: **T-22** (contexto de conversación), que ya puede colgarse de la conversación que abre T-21. Pero antes conviene cerrar T-21 con su prueba en móvil, porque es el primer momento en que el pipeline entero se ve funcionando de punta a punta. **T-15 sigue siendo el riesgo nº1**: hasta que no haya corpus real, el chat responde sobre los 15 documentos de relleno y no se puede recalibrar el umbral de T-17.
 
 ---
 
@@ -49,7 +50,7 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 | T-18 | Camino de abstención end-to-end | ✅ | 3a | T-17 |  |
 | T-19 | Cliente de Gemini y contrato de respuesta | ✅ | 3b | T-01 | ✅ key en `.env.local` |
 | T-20 | Endpoint `/api/consulta` con verificación de citas | ✅ | 3b | T-18, T-19 | ✅ test de cita inventada en verde |
-| T-21 | Chat real conectado + chips de origen | ⬜ | 3b | T-08, T-20 | 🔴 preguntas reales |
+| T-21 | Chat real conectado + chips de origen | 🟡 | 3b | T-08, T-20 | 🔴 prueba en móvil con preguntas reales |
 | T-22 | Contexto de conversación (FR-009) | ⬜ | 3b | T-21 |  |
 | T-23 | PWA instalable | ⬜ | Cierre | T-04 |  |
 | T-24 | Botón de reportar respuesta | ⬜ | Cierre | T-21 |  |
@@ -57,7 +58,7 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 
 **Corte mínimo del MVP**: T-01 → T-22, más T-23 y T-25. T-24 es deseable pero prescindible.
 
-**Queda del corte mínimo**: T-15, T-21, T-22, T-23 y T-25, más cerrar la prueba pendiente de T-12.
+**Queda del corte mínimo**: T-15, T-22, T-23 y T-25, más cerrar las pruebas pendientes de T-12 y T-21.
 
 ---
 
@@ -206,11 +207,19 @@ Une T-18 y T-19: recuperar → umbral → ordenar → prompt con fragmentos nume
 - **Entregable**: `app/api/consulta/route.ts` + `tests/api-consulta.test.ts` (`npm test`), la primera suite de tests del repo.
 - **Estado**: cerrada. El endpoint recupera, aplica el umbral, llama a `generarRespuesta()` y descarta la respuesta **entera** si algún `id` citado no estaba entre los fragmentos enviados. El test inyecta esa respuesta con un id inventado y comprueba que el endpoint se abstiene en vez de devolverla; cubre además la cita parcialmente inventada, el caso de control con citas válidas, la abstención sin llamar al modelo (T-18) y los 400/401. Se comprobó que el test detecta el fallo de verdad: desactivando la verificación en `route.ts` fallan exactamente los 2 tests de citas. Montaje y decisión de herramienta en [docs/historial.md](../docs/historial.md).
 
-### T-21 · Chat real conectado + chips de origen ⬜ 🔴
+### T-21 · Chat real conectado + chips de origen 🟡 🔴
 Sustituir los datos falsos de T-08 por llamadas a `/api/consulta`. Chips pintados desde `fuentes` con su `tipo`, aviso de "varias fuentes" cuando `multiples_fuentes`, burbuja de abstención cuando `suficiente: false`. Estados de carga y de error. Crear/reutilizar la fila de `conversacion` al entrar al chat de una herramienta y pasar su `id` a `/api/consulta`, que persiste ahí cada `mensaje` (pregunta, respuesta, `fuentes`) — movido aquí desde T-20 porque hasta que existe esta pantalla no hay `conversacion_id` que persistir.
 
 - **Prueba** en móvil real: (a) una pregunta cubierta responde bien y con chip de origen visible; (b) una pregunta fuera del corpus da el mensaje de abstención. **Cierre de la Fase 3: chat real funcionando.**
 - **Necesita**: el equipo prueba con preguntas reales.
+- **Estado**: construida, pendiente de esa prueba en móvil. Lo que hay:
+  - `app/(shell)/chat/page.tsx` ya no tiene ni un dato falso: los dos guiones (el genérico y la secuencia de n8n del vídeo) se han borrado y cada pregunta va a `/api/consulta`. Un chip por **tipo** distinto de fuente (dos documentos oficiales no pintan dos chips), ordenados oficial > compartido > personal como FR-005; "Varias fuentes" cuando `multiples_fuentes`; puntos de "escribiendo" mientras se espera; burbuja con borde de aviso cuando la petición falla; 401 → vuelta a `/login`.
+  - **Herramientas sin corpus cargado (hoy Claude y n8n) responden siempre con la abstención de FR-008.** Es correcto, pero conviene saberlo antes de enseñarlo: la demo de verdad es con Salesforce.
+  - Conversación nueva en cada entrada al chat, creada con la primera pregunta (`POST /api/conversacion`) y no al abrir la pantalla, para no dejar filas vacías. `/api/consulta` recibe su `id` y persiste los dos mensajes del turno con sus `fuentes`. Si el guardado falla, la respuesta se devuelve igualmente: la persistencia es auditoría, no parte de la respuesta.
+  - La herramienta elegida se guarda en `sessionStorage` (`components/HerramientaProvider.tsx`): vivía solo en estado de React y recargar `/chat` dejaba la pantalla sin herramienta que consultar.
+  - Un fallo del proveedor de IA devuelve **502**, no una abstención: decir "no dispongo de información fiable" cuando el corpus sí tenía fragmentos sería mentir sobre el corpus.
+  - Tests nuevos en `tests/api-consulta.test.ts` y `tests/api-conversacion.test.ts` (19 en total): persistencia del turno, abstención también persistida, normalización del nombre de la herramienta, respuesta devuelta pese a un fallo de guardado, 502 del proveedor y el alta de conversación con el usuario de la sesión. Verificado que detectan el fallo: desactivando normalización y persistencia en `route.ts` fallan exactamente esos 4 tests.
+  - Detalle de las decisiones en [docs/historial.md](../docs/historial.md).
 
 ### T-22 · Contexto de conversación (FR-009) ⬜
 Reenviar los últimos N turnos al modelo. Los fragmentos recuperados van solo en el turno actual, no se acumulan.

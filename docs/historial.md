@@ -4,6 +4,32 @@ Registro de hitos, decisiones técnicas y problemas resueltos que no quedan del 
 
 ---
 
+## 2026-09-23 — El chat deja de fingir: pantalla conectada a `/api/consulta` (T-21)
+
+**Contexto**: el motor de respuesta llevaba cerrado desde T-20, pero la pantalla de chat seguía siendo la de T-08 — dos guiones de datos falsos, uno genérico con los cuatro casos de fuente y la secuencia guionizada de n8n que se grabó para el vídeo de pitch. T-21 es lo que une las dos mitades del producto.
+
+**Decisión — fuera los dos guiones, incluido el de n8n**. La alternativa era conservar la secuencia de n8n como demo (el vídeo la usa), pero eso deja código de mentira dentro de la pantalla de verdad y, sobre todo, enseña una conversación que el producto no puede tener. **Consecuencia que hay que tener presente: n8n y Claude no tienen corpus cargado, así que responden siempre con la abstención de FR-008.** Es el comportamiento correcto — es literalmente el caso que la demo debe enseñar — pero la demo de verdad es con Salesforce.
+
+**Decisión — conversación nueva en cada entrada al chat, creada con la primera pregunta**. T-21 decía "crear/reutilizar" la fila de `conversacion`; se optó por no reutilizar, porque la persistencia existe para auditar SC-002/SC-003, no para rehidratar la pantalla: reutilizar una conversación cuyos mensajes no se pintan deja un historial invisible y confuso. Y se crea con la primera pregunta, no al montar la pantalla, para no dejar una fila vacía cada vez que alguien abre el chat y se va sin preguntar. Cuando T-22 traiga el reenvío de los últimos turnos, tendrá una conversación con la que trabajar.
+
+**Tres cosas que el chat real destapó y el chat falso escondía**:
+
+1. **El nombre de la herramienta no casaba con el corpus.** La UI enseña "Salesforce" y el corpus guarda `salesforce`; `buscar()` compara con un `=` exacto, así que *todas* las preguntas del chat se habrían ido por el camino de abstención con el corpus lleno delante. Se normaliza en el servidor (`normalizarHerramienta()` en `lib/buscar.ts`, junto a la consulta que depende de ello), no en la pantalla: el cliente manda lo que quiera y el servidor decide cómo se llama una herramienta.
+2. **La herramienta elegida no sobrevivía a una recarga.** Vivía solo en el estado de React de `HerramientaProvider`; con datos falsos eso solo cambiaba un nombre en el saludo, pero ahora es lo que se manda a `/api/consulta` — recargar `/chat` habría dejado la pantalla mandando 400. Se guarda en `sessionStorage`, leído con `useSyncExternalStore` (no con un `useEffect` que llame a `setState`: eso es un error de lint en esta versión, `react-hooks/set-state-in-effect`, y además provoca renders en cascada). El hook sirve dos instantáneas, `null` en el servidor y el valor real tras la hidratación, que es justo lo que hace falta para no romper la hidratación.
+3. **Un fallo de Gemini no es una abstención.** Si `generarRespuesta()` revienta (sin API key, proveedor caído), responder "no dispongo de información fiable" sería mentir sobre el corpus: los fragmentos estaban ahí. Ahora eso devuelve **502** con un mensaje de reintento, y la pantalla lo pinta como error, no como respuesta del tutor.
+
+**Persistencia (movida aquí desde T-20)**: `/api/consulta` acepta `conversacion_id` y escribe los dos mensajes del turno en `mensaje`, con las `fuentes` citadas. Si el insert falla, se registra en el log del servidor y **la respuesta se devuelve igualmente**: perder una fila de auditoría es molesto, tragarse una respuesta ya generada delante del usuario lo es mucho más. El dueño de la conversación sale siempre de la sesión (`user.id`), nunca del cuerpo de la petición, y las políticas RLS de T-12 rechazan en la base de datos cualquier `conversacion_id` ajeno que llegue en el cuerpo.
+
+**Tests**: 19 en total (antes 7). Los nuevos cubren la persistencia del turno, que las abstenciones también se persisten, la normalización del nombre de la herramienta, que un fallo de guardado no se come la respuesta, el 502 del proveedor y el alta de conversación (`tests/api-conversacion.test.ts`). Como en T-20, se comprobó que detectan el fallo de verdad: quitando la normalización y la persistencia de `route.ts` fallan exactamente esos 4 tests y los otros 15 siguen pasando.
+
+**Sin tests de componente todavía**: `vitest.config.mts` anticipaba que T-21 traería jsdom y React Testing Library. No se han añadido — la prueba que pide T-21 es el recorrido en un móvil real, y montar el entorno de componentes para afirmar que un chip se pinta habría sido más andamiaje que valor. Queda para cuando haya un componente con lógica propia que merezca test.
+
+**Pendiente para cerrar T-21**: la prueba en móvil real con sesión iniciada — (a) una pregunta cubierta por el corpus responde con su chip de origen visible, (b) una pregunta fuera del corpus da la abstención. Los caminos sin sesión sí se comprobaron contra `next dev` (401 en ambos endpoints, 400 sin `herramienta`, y `/chat` redirigiendo a `/login`).
+
+**Archivos tocados**: `app/(shell)/chat/page.tsx`, `app/api/consulta/route.ts`, `app/api/conversacion/route.ts` (nuevo), `components/HerramientaProvider.tsx`, `lib/buscar.ts`, `tests/api-consulta.test.ts`, `tests/api-conversacion.test.ts` (nuevo), `README.md`, `specs/tasks.md`, `specs/plan.md`.
+
+---
+
 ## 2026-09-22 — Primera suite de tests: Vitest y el test que sostiene SC-002 (T-20)
 
 **Contexto**: el endpoint `/api/consulta` con verificación de citas (FR-007) estaba construido y verificado a mano desde el commit `d0111da`, pero T-20 seguía en 🟡 porque su prueba — "inyectar una respuesta del modelo con un id de fuente inventado y comprobar que el endpoint la rechaza" — no existía como test automatizado. El repo no tenía suite de tests de ningún tipo.

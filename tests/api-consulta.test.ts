@@ -16,7 +16,13 @@ import type { ResultadoBusqueda } from "@/lib/buscar";
 import type { RespuestaIA } from "@/lib/ia";
 
 vi.mock("@/lib/supabase/server", () => ({ crearClienteServidor: vi.fn() }));
-vi.mock("@/lib/buscar", () => ({ recuperar: vi.fn() }));
+// `normalizarHerramienta` no se dobla: es una función pura de una línea y lo
+// que el test quiere comprobar es justo que el endpoint la aplica antes de
+// buscar, no que la llama.
+vi.mock("@/lib/buscar", () => ({
+  recuperar: vi.fn(),
+  normalizarHerramienta: (herramienta: string) => herramienta.trim().toLowerCase(),
+}));
 vi.mock("@/lib/ia", () => ({ generarRespuesta: vi.fn() }));
 
 import { POST } from "@/app/api/consulta/route";
@@ -85,14 +91,27 @@ function respuestaIA(fuentes: RespuestaIA["fuentes"]): RespuestaIA {
   };
 }
 
+const ID_CONVERSACION = "33333333-3333-4333-8333-333333333333";
+
+// El doble de Supabase: `auth.getUser()` para la sesión y `from(...).insert()`
+// para la persistencia del turno (T-21). `insertar` se deja accesible para
+// poder afirmar qué filas se escribieron.
+let insertar: ReturnType<typeof vi.fn>;
+
 function sesionDe(usuario: { id: string } | null) {
   return {
     auth: { getUser: async () => ({ data: { user: usuario } }) },
+    from: vi.fn(() => ({ insert: insertar })),
   } as unknown as Awaited<ReturnType<typeof crearClienteServidor>>;
+}
+
+function filasInsertadas() {
+  return insertar.mock.calls[0]?.[0] as { rol: string; contenido: string; fuentes?: unknown }[];
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  insertar = vi.fn(async () => ({ error: null }));
   crearClienteServidorMock.mockResolvedValue(sesionDe({ id: "usuario-a" }));
   recuperarMock.mockResolvedValue(FRAGMENTOS_ENVIADOS);
 });
@@ -175,5 +194,125 @@ describe("POST /api/consulta — validación de entrada y sesión", () => {
     expect(respuesta.status).toBe(401);
     expect(recuperarMock).not.toHaveBeenCalled();
     expect(generarRespuestaMock).not.toHaveBeenCalled();
+  });
+
+  it("responde 400 si 'conversacion_id' viene con un valor que no es un id", async () => {
+    const respuesta = await POST(
+      peticion({ pregunta: "¿Cómo creo un informe?", herramienta: "salesforce", conversacion_id: 42 })
+    );
+
+    expect(respuesta.status).toBe(400);
+    expect(recuperarMock).not.toHaveBeenCalled();
+  });
+});
+
+// T-21: la pantalla manda el nombre tal y como lo enseña ("Salesforce"),
+// pero el corpus guarda 'salesforce' y buscar() compara con un '=' exacto.
+// Sin esta normalización, todas las preguntas del chat real se irían por el
+// camino de abstención aunque el corpus tuviera la respuesta.
+describe("POST /api/consulta — nombre de la herramienta", () => {
+  it("normaliza el nombre que llega de la UI antes de buscar en el corpus", async () => {
+    generarRespuestaMock.mockResolvedValue(respuestaIA([{ id: FRAGMENTOS_ENVIADOS[0].id, tipo: "oficial" }]));
+
+    await POST(peticion({ pregunta: "¿Cómo creo un informe?", herramienta: "  Salesforce  " }));
+
+    expect(recuperarMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "¿Cómo creo un informe?",
+      "salesforce",
+      "usuario-a"
+    );
+  });
+});
+
+// T-21: persistencia del turno en `mensaje` (movida aquí desde T-20, que no
+// tenía todavía una pantalla que creara la conversación). Alimenta la
+// auditoría de SC-002 y SC-003.
+describe("POST /api/consulta — persistencia del turno", () => {
+  it("guarda la pregunta y la respuesta con sus fuentes cuando hay conversación", async () => {
+    const valida = respuestaIA([{ id: FRAGMENTOS_ENVIADOS[0].id, tipo: "oficial" }]);
+    generarRespuestaMock.mockResolvedValue(valida);
+
+    await POST(
+      peticion({
+        pregunta: "¿Cómo creo un informe?",
+        herramienta: "salesforce",
+        conversacion_id: ID_CONVERSACION,
+      })
+    );
+
+    expect(filasInsertadas()).toEqual([
+      { conversacion_id: ID_CONVERSACION, rol: "usuario", contenido: "¿Cómo creo un informe?" },
+      {
+        conversacion_id: ID_CONVERSACION,
+        rol: "tutor",
+        contenido: valida.respuesta,
+        fuentes: valida.fuentes,
+      },
+    ]);
+  });
+
+  it("guarda también las abstenciones — son parte de lo que hay que auditar", async () => {
+    recuperarMock.mockResolvedValue([]);
+
+    await POST(
+      peticion({
+        pregunta: "¿Cuál es la capital de Mongolia?",
+        herramienta: "salesforce",
+        conversacion_id: ID_CONVERSACION,
+      })
+    );
+
+    const filas = filasInsertadas();
+    expect(filas[1].contenido).toBe(RESPUESTA_ABSTENCION);
+    expect(filas[1].fuentes).toEqual([]);
+  });
+
+  it("no escribe nada si la petición no trae conversación", async () => {
+    generarRespuestaMock.mockResolvedValue(respuestaIA([{ id: FRAGMENTOS_ENVIADOS[0].id, tipo: "oficial" }]));
+
+    await POST(peticion({ pregunta: "¿Cómo creo un informe?", herramienta: "salesforce" }));
+
+    expect(insertar).not.toHaveBeenCalled();
+  });
+
+  it("devuelve la respuesta igualmente si falla el guardado", async () => {
+    const valida = respuestaIA([{ id: FRAGMENTOS_ENVIADOS[0].id, tipo: "oficial" }]);
+    generarRespuestaMock.mockResolvedValue(valida);
+    insertar.mockResolvedValue({ error: { message: "RLS: fila rechazada" } });
+    const errorDeConsola = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const respuesta = await POST(
+      peticion({
+        pregunta: "¿Cómo creo un informe?",
+        herramienta: "salesforce",
+        conversacion_id: ID_CONVERSACION,
+      })
+    );
+
+    // La persistencia es auditoría: un fallo suyo no puede tragarse una
+    // respuesta ya generada delante del usuario.
+    expect(respuesta.status).toBe(200);
+    expect(await respuesta.json()).toEqual(valida);
+    expect(errorDeConsola).toHaveBeenCalled();
+
+    errorDeConsola.mockRestore();
+  });
+});
+
+describe("POST /api/consulta — fallo del proveedor de IA", () => {
+  it("responde 502 en vez de abstenerse cuando la generación revienta", async () => {
+    generarRespuestaMock.mockRejectedValue(new Error("Falta GEMINI_API_KEY (revisa .env.local)"));
+    const errorDeConsola = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const respuesta = await POST(peticion({ pregunta: "¿Cómo creo un informe?", herramienta: "salesforce" }));
+
+    // Decir "no dispongo de información fiable" aquí sería mentir: el corpus
+    // sí tenía fragmentos, lo que falló fue el proveedor. La pantalla necesita
+    // poder distinguir un error técnico de una abstención real.
+    expect(respuesta.status).toBe(502);
+    expect(await respuesta.json()).not.toHaveProperty("suficiente");
+
+    errorDeConsola.mockRestore();
   });
 });

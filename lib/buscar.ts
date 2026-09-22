@@ -78,3 +78,12 @@ export async function recuperar(
     .filter((r) => r.rank >= UMBRAL_RELEVANCIA && r.coincidencias >= MINIMO_COINCIDENCIAS)
     .sort((a, b) => PRIORIDAD_TIPO[a.tipo] - PRIORIDAD_TIPO[b.tipo] || b.rank - a.rank);
 }
+
+// T-21: la UI muestra las herramientas con su nombre propio ("Salesforce",
+// "n8n") y el corpus las guarda en minúsculas ("salesforce"), que es lo que
+// compara `buscar()` con un `=` exacto. La normalización vive aquí, junto a
+// la consulta que depende de ella, y no en la pantalla: el cliente manda lo
+// que quiera y el servidor decide cómo se llama una herramienta.
+export function normalizarHerramienta(herramienta: string): string {
+  return herramienta.trim().toLowerCase();
+}

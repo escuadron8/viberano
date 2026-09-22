@@ -1,174 +1,170 @@
+// T-21: el chat real. Hasta aquí esta pantalla reproducía guiones falsos
+// (uno genérico con los cuatro casos de fuente y la secuencia guionizada de
+// n8n que se grabó para el pitch); ahora cada pregunta va a /api/consulta y
+// lo que se pinta es lo que devuelve el pipeline de la Fase 3: la respuesta,
+// sus chips de origen y la abstención cuando el corpus no da para responder.
+//
+// Consecuencia a tener presente en la demo: una herramienta sin corpus
+// cargado (hoy Claude y n8n) responderá siempre con la abstención de FR-008.
+// Es el comportamiento correcto, no un fallo.
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BurbujaChat } from "@/components/BurbujaChat";
 import { CabeceraMovil } from "@/components/CabeceraMovil";
 import { CampoTexto } from "@/components/CampoTexto";
 import { ChipOrigen } from "@/components/ChipOrigen";
 import { useHerramienta } from "@/components/HerramientaProvider";
+import type { TipoConocimiento } from "@/lib/buscar";
+
+// El contrato de respuesta de /api/consulta (specs/plan.md §3).
+type RespuestaConsulta = {
+  suficiente: boolean;
+  respuesta: string;
+  fuentes: { id: string; tipo: TipoConocimiento }[];
+  multiples_fuentes: boolean;
+};
 
 type Mensaje = {
   id: string;
   autor: "ia" | "usuario";
   texto: string;
-  fuentes?: ("oficial" | "compartido" | "personal" | "web")[];
+  tiposFuente?: TipoConocimiento[];
   variasFuentes?: boolean;
-  abstencion?: boolean;
+  error?: boolean;
 };
 
-const GUION_GENERICO: Omit<Mensaje, "id" | "autor">[] = [
-  {
-    texto: `Claro. En {herramienta} puedes hacerlo desde el menú de configuración, en la sección de vistas. Haz clic en el icono de engranaje arriba a la derecha.`,
-    fuentes: ["oficial"],
-  },
-  {
-    texto: `Hay dos formas de conseguirlo: la vía recomendada por el equipo y un atajo que comparte la comunidad. Te dejo ambas para que elijas.`,
-    fuentes: ["oficial", "compartido"],
-    variasFuentes: true,
-  },
-  {
-    texto: `No encontré esto en la documentación oficial ni en el conocimiento compartido o personal, así que busqué referencias externas en la web. Tómalo con algo más de cautela que el resto de respuestas: {herramienta} lo describe así en su documentación pública.`,
-    fuentes: ["web"],
-  },
-  {
-    texto: "No dispongo de información fiable para responder esto todavía, ni siquiera en fuentes externas. Prueba a reformular la pregunta o consulta la documentación oficial.",
-    abstencion: true,
-  },
-];
+const ERROR_GENERICO =
+  "No he podido conectar con el tutor. Comprueba tu conexión y vuelve a intentarlo.";
 
-const GUION_N8N: Omit<Mensaje, "id" | "autor">[] = [
-  {
-    texto: `Buena pregunta para empezar. Antes de nada, ¿tú vienes más del lado técnico o de negocio? Así te lo explico con el ejemplo que más te va a servir.`,
-  },
-  {
-    texto: `Perfecto, entonces piénsalo así: un workflow es como una receta de cocina automática. Cada "nodo" (esos cuadraditos que ves en el lienzo) es un paso de la receta — uno puede decir "cuando llegue un email nuevo", otro "resume ese email con IA", y otro "mándalo a Slack". Tú conectas los pasos con líneas, y n8n los ejecuta solo. ¿Quieres que montemos juntos uno sencillito con tu bandeja de correo como ejemplo?`,
-    fuentes: ["oficial"],
-  },
-];
+// FR-005: el mismo orden de prioridad que usa el servidor con los
+// fragmentos, aplicado aquí a los chips para que "Oficial" salga primero.
+const PRIORIDAD_TIPO: Record<TipoConocimiento, number> = {
+  oficial: 0,
+  compartido: 1,
+  personal: 2,
+};
 
-function respuestaSimulada(herramienta: string, turno: number): Mensaje {
-  const item =
-    herramienta === "n8n" && turno < GUION_N8N.length
-      ? GUION_N8N[turno]
-      : GUION_GENERICO[turno % GUION_GENERICO.length];
-  return {
-    id: `ia-${turno}-${Date.now()}`,
-    autor: "ia",
-    ...item,
-    texto: item.texto.replace("{herramienta}", herramienta),
-  };
+// Varias citas pueden ser del mismo tipo (dos documentos oficiales, por
+// ejemplo): el chip dice de dónde sale la respuesta, así que se pinta uno
+// por tipo distinto, no uno por cita.
+function tiposDeFuente(fuentes: RespuestaConsulta["fuentes"]): TipoConocimiento[] {
+  return [...new Set(fuentes.map((f) => f.tipo))].sort(
+    (a, b) => PRIORIDAD_TIPO[a] - PRIORIDAD_TIPO[b]
+  );
 }
 
-const MENSAJES_INICIALES_N8N: Mensaje[] = [
-  {
-    id: "n8n-u-0",
-    autor: "usuario",
-    texto: `Acabo de abrir n8n y no tengo ni idea de qué estoy viendo. ¿Qué es un "workflow"?`,
-  },
-  {
-    id: "n8n-ia-0",
-    autor: "ia",
-    texto: `Buena pregunta para empezar. Antes de nada, ¿tú vienes más del lado técnico o de negocio? Así te lo explico con el ejemplo que más te va a servir.`,
-  },
-  {
-    id: "n8n-u-1",
-    autor: "usuario",
-    texto: "Soy de negocio, no programo.",
-  },
-  {
-    id: "n8n-ia-1",
-    autor: "ia",
-    texto: `Perfecto, entonces piénsalo así: un workflow es como una receta de cocina automática. Cada "nodo" (esos cuadraditos que ves en el lienzo) es un paso de la receta — uno puede decir "cuando llegue un email nuevo", otro "resume ese email con IA", y otro "mándalo a Slack". Tú conectas los pasos con líneas, y n8n los ejecuta solo. ¿Quieres que montemos juntos uno sencillito con tu bandeja de correo como ejemplo?`,
-    fuentes: ["oficial"],
-  },
-];
-
-const PAUSA_ENTRE_MENSAJES = 900;
-const PAUSA_ANTES_DE_ESCRIBIR = 500;
-const DURACION_ESCRIBIENDO = 1100;
-
 export default function ChatPage() {
-  const { herramienta } = useHerramienta();
-  const nombreHerramienta = herramienta ?? "tu herramienta";
-  const esN8n = nombreHerramienta === "n8n";
+  const router = useRouter();
+  const { herramienta, cargando } = useHerramienta();
 
-  const [mensajes, setMensajes] = useState<Mensaje[]>(() =>
-    esN8n
-      ? []
-      : [
-          {
-            id: "bienvenida",
-            autor: "ia",
-            texto: `Hola, veo que estás aprendiendo ${nombreHerramienta}. ¿En qué puedo ayudarte hoy?`,
-          },
-        ]
-  );
+  const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [entrada, setEntrada] = useState("");
-  const [escribiendo, setEscribiendo] = useState(false);
-  const [reproduciendoDemo, setReproduciendoDemo] = useState(esN8n);
-  const turnoRef = useRef(esN8n ? GUION_N8N.length : 0);
+  const [esperando, setEsperando] = useState(false);
+  // La conversación se abre con la primera pregunta y se reutiliza durante
+  // toda la visita a la pantalla. Es una ref y no estado porque el envío
+  // necesita su valor en ese momento, no en el siguiente render.
+  const conversacionRef = useRef<string | null>(null);
   const finRef = useRef<HTMLDivElement>(null);
+
+  // Sin herramienta elegida no hay nada que consultar (pasa al entrar a
+  // /chat directamente, sin pasar por la pantalla de selección).
+  useEffect(() => {
+    if (!cargando && !herramienta) {
+      router.replace("/software");
+    }
+  }, [cargando, herramienta, router]);
 
   useEffect(() => {
     finRef.current?.scrollIntoView({ block: "end" });
-  }, [mensajes, escribiendo]);
+  }, [mensajes, esperando]);
 
-  useEffect(() => {
-    if (!esN8n) return;
+  // La fila de `conversacion` se crea aquí, con la primera pregunta, para no
+  // dejar conversaciones vacías de quien solo abre la pantalla. Si falla, se
+  // sigue sin ella: la persistencia es auditoría y no debe impedir preguntar.
+  async function asegurarConversacion(nombreHerramienta: string): Promise<string | null> {
+    if (conversacionRef.current) return conversacionRef.current;
 
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    let tiempo = PAUSA_ANTES_DE_ESCRIBIR;
+    try {
+      const respuesta = await fetch("/api/conversacion", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ herramienta: nombreHerramienta }),
+      });
+      if (!respuesta.ok) return null;
 
-    MENSAJES_INICIALES_N8N.forEach((mensaje) => {
-      if (mensaje.autor === "ia") {
-        timers.push(setTimeout(() => setEscribiendo(true), tiempo));
-        tiempo += DURACION_ESCRIBIENDO;
-        timers.push(
-          setTimeout(() => {
-            setEscribiendo(false);
-            setMensajes((prev) => [...prev, mensaje]);
-          }, tiempo)
-        );
-      } else {
-        timers.push(
-          setTimeout(() => {
-            setMensajes((prev) => [...prev, mensaje]);
-          }, tiempo)
-        );
-      }
-      tiempo += PAUSA_ENTRE_MENSAJES;
-    });
-
-    timers.push(setTimeout(() => setReproduciendoDemo(false), tiempo));
-
-    return () => {
-      timers.forEach(clearTimeout);
-    };
-  }, [esN8n]);
-
-  function enviar(e: React.FormEvent) {
-    e.preventDefault();
-    const texto = entrada.trim();
-    if (!texto) return;
-
-    setMensajes((prev) => [...prev, { id: `u-${Date.now()}`, autor: "usuario", texto }]);
-    setEntrada("");
-    setEscribiendo(true);
-
-    const turno = turnoRef.current;
-    turnoRef.current += 1;
-
-    setTimeout(() => {
-      setEscribiendo(false);
-      setMensajes((prev) => [...prev, respuestaSimulada(nombreHerramienta, turno)]);
-    }, 700);
+      const { id } = await respuesta.json();
+      conversacionRef.current = typeof id === "string" ? id : null;
+      return conversacionRef.current;
+    } catch {
+      return null;
+    }
   }
+
+  function anadir(mensaje: Mensaje) {
+    setMensajes((prev) => [...prev, mensaje]);
+  }
+
+  async function enviar(e: React.FormEvent) {
+    e.preventDefault();
+    const pregunta = entrada.trim();
+    if (!pregunta || esperando || !herramienta) return;
+
+    anadir({ id: `u-${Date.now()}`, autor: "usuario", texto: pregunta });
+    setEntrada("");
+    setEsperando(true);
+
+    try {
+      const conversacionId = await asegurarConversacion(herramienta);
+
+      const respuesta = await fetch("/api/consulta", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pregunta, herramienta, conversacion_id: conversacionId }),
+      });
+
+      if (respuesta.status === 401) {
+        // La sesión caducó mientras el chat estaba abierto.
+        router.replace("/login?next=/chat");
+        return;
+      }
+
+      if (!respuesta.ok) {
+        const cuerpo = await respuesta.json().catch(() => null);
+        anadir({
+          id: `err-${Date.now()}`,
+          autor: "ia",
+          texto: typeof cuerpo?.error === "string" ? cuerpo.error : ERROR_GENERICO,
+          error: true,
+        });
+        return;
+      }
+
+      const datos: RespuestaConsulta = await respuesta.json();
+
+      anadir({
+        id: `ia-${Date.now()}`,
+        autor: "ia",
+        texto: datos.respuesta,
+        tiposFuente: tiposDeFuente(datos.fuentes ?? []),
+        variasFuentes: datos.multiples_fuentes,
+      });
+    } catch {
+      anadir({ id: `err-${Date.now()}`, autor: "ia", texto: ERROR_GENERICO, error: true });
+    } finally {
+      setEsperando(false);
+    }
+  }
+
+  if (cargando || !herramienta) return null;
 
   return (
     <div className="flex h-dvh flex-col">
       <CabeceraMovil
-        titulo={`Tutor · ${nombreHerramienta}`}
+        titulo={`Tutor · ${herramienta}`}
         hrefAtras="/software"
         className="bg-chat-ai-bg"
         accion={
@@ -185,14 +181,24 @@ export default function ChatPage() {
         }
       />
 
-      <div className="flex flex-1 flex-col gap-sm overflow-y-auto px-lg py-md">
+      <div className="flex flex-1 flex-col gap-sm overflow-y-auto px-lg py-md" aria-live="polite">
+        <BurbujaChat variante="ia">
+          {`Hola, veo que estás aprendiendo ${herramienta}. ¿En qué puedo ayudarte hoy?`}
+        </BurbujaChat>
+
         {mensajes.map((m) => (
-          <div key={m.id} className="flex flex-col gap-xs" style={{ alignSelf: m.autor === "ia" ? "flex-start" : "flex-end" }}>
-            <BurbujaChat variante={m.autor}>{m.texto}</BurbujaChat>
-            {m.fuentes && m.fuentes.length > 0 ? (
+          <div
+            key={m.id}
+            className="flex flex-col gap-xs"
+            style={{ alignSelf: m.autor === "ia" ? "flex-start" : "flex-end" }}
+          >
+            <BurbujaChat variante={m.autor} className={m.error ? "border border-warning" : ""}>
+              {m.texto}
+            </BurbujaChat>
+            {m.tiposFuente && m.tiposFuente.length > 0 ? (
               <div className="flex flex-wrap items-center gap-xs">
-                {m.fuentes.map((f) => (
-                  <ChipOrigen key={f} tipo={f} />
+                {m.tiposFuente.map((tipo) => (
+                  <ChipOrigen key={tipo} tipo={tipo} />
                 ))}
                 {m.variasFuentes ? (
                   <span className="text-body-md text-ink-secondary">Varias fuentes</span>
@@ -202,9 +208,10 @@ export default function ChatPage() {
           </div>
         ))}
 
-        {escribiendo ? (
+        {esperando ? (
           <BurbujaChat variante="ia">
             <span className="flex items-center gap-xs">
+              <span className="sr-only">El tutor está escribiendo</span>
               <span className="h-2 w-2 animate-bounce rounded-full bg-ink-secondary [animation-delay:-0.3s]" />
               <span className="h-2 w-2 animate-bounce rounded-full bg-ink-secondary [animation-delay:-0.15s]" />
               <span className="h-2 w-2 animate-bounce rounded-full bg-ink-secondary" />
@@ -220,15 +227,15 @@ export default function ChatPage() {
       >
         <CampoTexto
           className="flex-1"
-          placeholder={reproduciendoDemo ? "El tutor está escribiendo..." : "Escribe tu pregunta..."}
+          placeholder={esperando ? "El tutor está pensando..." : "Escribe tu pregunta..."}
           value={entrada}
           onChange={(e) => setEntrada(e.target.value)}
-          disabled={reproduciendoDemo}
+          disabled={esperando}
           aria-label="Escribe tu pregunta"
         />
         <button
           type="submit"
-          disabled={!entrada.trim() || reproduciendoDemo}
+          disabled={!entrada.trim() || esperando}
           aria-label="Enviar"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-primary text-canvas transition-opacity disabled:opacity-40"
         >

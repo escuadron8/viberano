@@ -38,12 +38,12 @@ El repositorio empezó siendo un MVP de interfaz con respuestas guionizadas, y d
 **Lo que falta**:
 
 - **El corpus oficial real**: lo que hay en `corpus/` son 15 documentos de relleno para probar el pipeline. Es el bloqueo principal, y de él depende recalibrar el umbral de relevancia.
-- **Conectar el chat al motor**: la pantalla de chat todavía responde con el guion de demo, no con `/api/consulta`.
+- **La prueba en un móvil real del chat conectado**: la pantalla ya llama a `/api/consulta` y pinta chips de origen y abstenciones, pero falta recorrerlo en un teléfono con preguntas de verdad.
 - Contexto de conversación entre turnos, PWA instalable y el recorrido end-to-end en un móvil limpio.
 
 ## Cómo se prueba
 
-La verificación es en buena parte manual, sobre la propia app, más una suite de tests automatizados (Vitest) que por ahora cubre `/api/consulta` y unos scripts de comprobación del motor:
+La verificación es en buena parte manual, sobre la propia app, más una suite de tests automatizados (Vitest) que por ahora cubre `/api/consulta` y `/api/conversacion`, y unos scripts de comprobación del motor:
 
 ```bash
 npm install
@@ -65,7 +65,7 @@ npm run probar-ia        # contrato de respuesta de Gemini: cita cuando puede, s
 ```
 
 - Recorre el flujo completo en un viewport móvil (la app es mobile-first): onboarding → selección de software → chat → progreso.
-- Prueba especialmente el chat con **n8n**, que tiene una secuencia de demo con turnos guionizados, y con cualquier otra herramienta, que usa un guion genérico con los cuatro casos de fuente (oficial, varias fuentes, referencia web, abstención).
+- El chat responde de verdad: cada pregunta va a `/api/consulta` y lo que se pinta es lo que devuelve el pipeline (respuesta, chips de origen, o la abstención cuando el corpus no da para responder). Requiere sesión iniciada y el corpus cargado. **Pruébalo con Salesforce**, que es la única herramienta con corpus hoy: n8n y Claude se abstendrán siempre, que es lo correcto pero no luce.
 - `/catalogo` es una página de catálogo de componentes (botón, tarjeta, burbuja de chat, chip de origen, anillo de progreso) para verificar visualmente el sistema de diseño de forma aislada.
 - En [demos/](demos/) y [pitch/](pitch/) hay grabaciones de las distintas versiones de la app en funcionamiento, usadas como referencia y para el vídeo de presentación del concurso.
 
