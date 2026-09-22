@@ -4,6 +4,25 @@ Registro de hitos, decisiones técnicas y problemas resueltos que no quedan del 
 
 ---
 
+## 2026-09-22 — Cambio de proveedor de IA: Gemini en vez de Claude (T-19)
+
+**Contexto**: `plan.md` y `tasks.md` (escritos antes de T-14) daban por hecho la API de Claude para T-19, bloqueada por "API key de Anthropic con facturación activa". Al retomar el desarrollo esa key seguía sin existir — el equipo no tiene presupuesto para una API de pago ahora mismo.
+
+**Decisión**: usar Google Gemini (`gemini-2.5-flash` vía `@google/genai`) en su free tier, que no pide tarjeta. Soporta salida estructurada nativa (`responseSchema`), que es exactamente lo que necesita el contrato `{suficiente, respuesta, fuentes[], multiples_fuentes}` de `plan.md` §3 — el cambio de proveedor no afecta al contrato ni al resto del pipeline, solo a `lib/ia.ts`.
+
+**Diferencias frente al diseño original pensado para Claude**:
+- Sin `temperature`/`top_p`/`top_k` especiales ni `output_config.effort` — no aplican a Gemini.
+- Sin prompt caching explícito (`cache_control`): el caching de contexto de Gemini es de pago; con un system prompt corto el ahorro no compensa la complejidad en el MVP.
+- Reglas de abstención (FR-008) y citación (FR-007) viven en `systemInstruction` en vez de en el bloque `system` de Anthropic — mismo rol, sintaxis distinta.
+
+**Alcance de T-20 recortado**: la persistencia de `mensaje` (pregunta, respuesta, `fuentes`) se movió a T-21 porque `/api/consulta` todavía no recibe `conversacion_id` — esa pantalla (T-21) es la que decide cómo se crea y reutiliza una `conversacion`. Implementar la persistencia antes habría significado inventar ese ciclo de vida sin que la UI lo hubiera definido.
+
+**Pendiente**: falta pegar una `GEMINI_API_KEY` real en `.env.local` (gratis en https://aistudio.google.com/apikey) para poder correr `npm run probar-ia` y cerrar T-19 de verdad.
+
+**Archivos tocados**: `lib/ia.ts` (nuevo), `scripts/probar-ia.mts` (nuevo), `app/api/consulta/route.ts`, `.env.example`, `.env.local`, `package.json`, `specs/plan.md`, `specs/tasks.md`.
+
+---
+
 ## 2026-09-17 — Umbral de relevancia: el FTS no separa perfectamente con un corpus pequeño y genérico (T-17)
 
 **Contexto**: al fijar el umbral que decide si hay "suficiente" conocimiento para responder (FR-008), se probó contra las 10 preguntas conocidas de T-16 más 5 preguntas deliberadamente fuera del corpus. El corpus usado era el de relleno de 15 documentos genéricos de Salesforce (no el corpus real de T-15).

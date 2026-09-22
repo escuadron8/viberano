@@ -30,7 +30,7 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 | T-16 | Función `buscar()` — FTS aislada | 3a | T-15 | |
 | T-17 | Umbral de relevancia y orden de fuentes | 3a | T-16 | 🔴 validar resultados |
 | T-18 | Camino de abstención end-to-end | 3a | T-17 | |
-| T-19 | Cliente de Claude y contrato de respuesta | 3b | T-01 | 🔴 API key con facturación |
+| T-19 | Cliente de Gemini y contrato de respuesta | 3b | T-01 | 🔴 pegar key gratis en `.env.local` |
 | T-20 | Endpoint `/api/consulta` con verificación de citas | 3b | T-18, T-19 | |
 | T-21 | Chat real conectado + chips de origen | 3b | T-08, T-20 | 🔴 preguntas reales |
 | T-22 | Contexto de conversación (FR-009) | 3b | T-21 | |
@@ -161,25 +161,27 @@ Fijar el umbral mínimo de `rank` por debajo del cual se considera que no hay co
 ### T-18 · Camino de abstención end-to-end
 Endpoint que recibe una pregunta y, cuando no hay resultados por encima del umbral, devuelve directamente "no dispongo de información fiable" **sin llamar al modelo** (FR-008). Es la defensa principal contra la alucinación.
 
-- **Prueba**: llamar al endpoint con una pregunta fuera del corpus y verificar en los logs que no hubo ninguna petición a la API de Claude.
+- **Prueba**: llamar al endpoint con una pregunta fuera del corpus y verificar en los logs que no hubo ninguna petición a la API de Gemini.
 
 ---
 
 ## Fase 3b — Generación
 
-### T-19 · Cliente de Claude y contrato de respuesta 🔴
-`@anthropic-ai/sdk` con `claude-opus-5`. System prompt con las reglas de abstención y citación, marcado con `cache_control: {type: "ephemeral"}`. Salida estructurada con el esquema `{suficiente, respuesta, fuentes[], multiples_fuentes}` de [plan.md §3](plan.md). Sin `temperature`/`top_p`/`top_k` (Opus 5 los rechaza), `output_config.effort: "low"`, `max_tokens: 4096`, sin streaming.
+### T-19 · Cliente de Gemini y contrato de respuesta 🔴
+`@google/genai` con `gemini-2.5-flash` (free tier, sin tarjeta — decisión del 2026-09-22, ver [docs/historial.md](../docs/historial.md)). `lib/ia.ts` con `systemInstruction` con las reglas de abstención y citación, y salida estructurada nativa (`responseMimeType: "application/json"` + `responseSchema`) con el esquema `{suficiente, respuesta, fuentes[], multiples_fuentes}` de [plan.md §3](plan.md). Sin streaming.
 
-- **Prueba**: script que envía una pregunta con fragmentos falsos y recibe un JSON que valida contra el esquema. Segunda ejecución: los logs muestran lectura de caché en el system.
-- **Necesita**: API key de Anthropic con facturación activa.
+- **Entregable**: `lib/ia.ts` + `scripts/probar-ia.mts`.
+- **Prueba**: `npm run probar-ia` — envía una pregunta con fragmentos falsos y recibe un JSON que valida contra el esquema; una segunda pregunta deliberadamente no cubierta por esos fragmentos se abstiene.
+- **Necesita**: pegar una `GEMINI_API_KEY` en `.env.local` — gratis, sin tarjeta, en https://aistudio.google.com/apikey.
 
 ### T-20 · Endpoint `/api/consulta` con verificación de citas
-Une T-18 y T-19: recuperar → umbral → ordenar → prompt con fragmentos numerados → respuesta estructurada → **verificar en servidor que todo `id` citado existe entre los fragmentos enviados**; si no, descartar la respuesta (FR-007). Persistir pregunta y respuesta en `mensaje`, con las citas en `fuentes`.
+Une T-18 y T-19: recuperar → umbral → ordenar → prompt con fragmentos numerados → respuesta estructurada → **verificar en servidor que todo `id` citado existe entre los fragmentos enviados**; si no, descartar la respuesta y caer a la abstención de T-18 (FR-007).
 
 - **Prueba**: test que inyecta una respuesta del modelo con un id de fuente inventado y comprueba que el endpoint la rechaza en vez de devolverla. Este test es lo que sostiene SC-002.
+- **Nota de alcance**: la persistencia en `mensaje` (pregunta, respuesta, `fuentes`) queda para T-21 — hoy `/api/consulta` no recibe `conversacion_id` porque todavía no existe la pantalla que crea y gestiona la conversación. Escribir esa persistencia ahora sería inventar un ciclo de vida de `conversacion` sin que la UI lo haya definido.
 
 ### T-21 · Chat real conectado + chips de origen 🔴
-Sustituir los datos falsos de T-08 por llamadas a `/api/consulta`. Chips pintados desde `fuentes` con su `tipo`, aviso de "varias fuentes" cuando `multiples_fuentes`, burbuja de abstención cuando `suficiente: false`. Estados de carga y de error.
+Sustituir los datos falsos de T-08 por llamadas a `/api/consulta`. Chips pintados desde `fuentes` con su `tipo`, aviso de "varias fuentes" cuando `multiples_fuentes`, burbuja de abstención cuando `suficiente: false`. Estados de carga y de error. Crear/reutilizar la fila de `conversacion` al entrar al chat de una herramienta y pasar su `id` a `/api/consulta`, que persiste ahí cada `mensaje` (pregunta, respuesta, `fuentes`) — movido aquí desde T-20 porque hasta que existe esta pantalla no hay `conversacion_id` que persistir.
 
 - **Prueba** en móvil real: (a) una pregunta cubierta responde bien y con chip de origen visible; (b) una pregunta fuera del corpus da el mensaje de abstención. **Cierre de la Fase 3: chat real funcionando.**
 - **Necesita**: el equipo prueba con preguntas reales.

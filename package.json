@@ -9,9 +9,11 @@
     "lint": "eslint",
     "cargar-corpus": "node scripts/cargar-corpus.mts",
     "probar-buscar": "node scripts/probar-buscar.mts",
-    "probar-umbral": "node scripts/probar-umbral.mts"
+    "probar-umbral": "node scripts/probar-umbral.mts",
+    "probar-ia": "node scripts/probar-ia.mts"
   },
   "dependencies": {
+    "@google/genai": "^2.24.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.113.0",
     "next": "16.3.1",

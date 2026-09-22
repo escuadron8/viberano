@@ -28,7 +28,7 @@ Las prioridades de la inception son, por este orden: **tiempo → presupuesto �
 | Estilos | Tailwind CSS v4 con los tokens de `Design-tutor.md` | — |
 | Tipografía | Inter vía `next/font` (self-hosted, sin CDN) | — |
 | Base de datos + Auth | Supabase (Postgres + Auth + Row Level Security) | Free tier |
-| IA | API de Claude (`claude-opus-5`) con SDK `@anthropic-ai/sdk` | Consumo por token |
+| IA | API de Google Gemini (`gemini-2.5-flash`) con SDK `@google/genai` | Gratis (free tier, sin tarjeta) |
 | Despliegue | Vercel (conectado a GitHub, deploy en cada push) | Free tier |
 
 **Por qué Supabase y no un backend propio**: Row Level Security resuelve en la base de datos el requisito más delicado de todo el proyecto — **FR-010, "el conocimiento personal solo para su propietario"**. Sin RLS eso es una condición `WHERE user_id = ...` que hay que acordarse de escribir en cada consulta, y basta olvidarla una vez para tener una fuga de datos en la demo.
@@ -45,7 +45,7 @@ Lo que realmente ocupa el calendario es otra cosa:
 |---|---|---|
 | Generar código, esquema SQL, componentes, prompts | IA | **Sí**, radicalmente |
 | Decidir y revisar (aprobar el esquema, ver cada pantalla en el móvil y decir qué falla) | **Vosotros** | No — son ciclos de ida y vuelta |
-| Setup con credenciales (Supabase, API key de Anthropic con facturación, Vercel + GitHub) | **Vosotros** | No — requiere vuestras cuentas |
+| Setup con credenciales (Supabase, API key de Google Gemini, Vercel + GitHub) | **Vosotros** | No — requiere vuestras cuentas |
 | **Escribir y validar el corpus de conocimiento oficial** | **Vosotros** | Solo el formato, no el criterio |
 | Probar en un móvil real | **Vosotros** | No |
 
@@ -76,7 +76,7 @@ Pregunta del usuario
       └── SÍ  ──►  [3] Ordenar: oficial > compartido > personal   (FR-005)
                         │
                         ▼
-                   [4] Llamada a Claude con salida estructurada:
+                   [4] Llamada a Gemini con salida estructurada:
                         - system: reglas de abstención y citación (cacheado)
                         - user:   pregunta + fragmentos numerados [1]..[n]
                         - output: JSON validado por esquema
@@ -113,12 +113,13 @@ Un solo objeto JSON cubre FR-003, FR-004, FR-006 y FR-008 y hace que la UI sea t
 
 ### Detalles de la llamada al modelo
 
-- **Modelo**: `claude-opus-5`.
-- **Sin `temperature` / `top_p` / `top_k`** — Opus 5 los rechaza con 400.
-- **Thinking activado** (es el comportamiento por defecto) con `output_config.effort: "low"`. Bajar el effort es la palanca de coste y latencia; **desactivar thinking no lo es** — en Opus 5 con thinking desactivado el modelo puede escribir llamadas a herramientas como texto plano o filtrar etiquetas `<thinking>` en la respuesta.
-- **`max_tokens: 4096`** — sin streaming en el MVP. Las respuestas de tutoría son cortas y el JSON estructurado no se renderiza bien a medias. Streaming es una mejora posterior si la latencia molesta en la demo.
-- **Prompt caching** en el bloque de system (`cache_control: {type: "ephemeral"}`). El system prompt es idéntico en todas las consultas; cachearlo cuesta ~0,1× en las lecturas. En Opus 5 el mínimo cacheable son 512 tokens, así que el prompt de reglas entra de sobra.
+- **Modelo**: `gemini-2.5-flash` (free tier de Google AI Studio, sin tarjeta).
+- **Salida estructurada nativa** vía `responseMimeType: "application/json"` + `responseSchema` — el SDK obliga la forma del JSON antes de que llegue al servidor, y aun así se vuelve a validar en `lib/ia.ts` por si acaso.
+- **Reglas de abstención y citación** en `systemInstruction`, fijas para todas las consultas.
+- Sin streaming en el MVP. Las respuestas de tutoría son cortas y el JSON estructurado no se renderiza bien a medias. Streaming es una mejora posterior si la latencia molesta en la demo.
+- Sin prompt caching explícito: el caching de contexto de Gemini requiere el tier de pago; con `gemini-2.5-flash` y un system prompt corto el coste de no cachear es irrelevante (el free tier ya es gratis).
 - **Historial**: se reenvían los últimos N turnos de la conversación para cumplir **FR-009** (mantener contexto). Los fragmentos recuperados van solo en el turno actual, no se acumulan.
+- **Límite del free tier**: cuota diaria de requests suficiente para una demo, pero no para producción real — si esto avanza más allá del MVP, revisar cuotas o pasar a un tier de pago.
 
 ---
 
