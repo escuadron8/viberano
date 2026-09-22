@@ -28,7 +28,7 @@ export type TurnoHistorial = {
   contenido: string;
 };
 
-const MODELO = "gemini-2.5-flash";
+const MODELO = "gemini-3.6-flash";
 
 // FR-007, FR-008: las dos reglas que sostienen la defensa contra la
 // alucinación viven en el prompt (citar solo lo recibido, abstenerse si no

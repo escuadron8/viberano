@@ -7,10 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "cargar-corpus": "node scripts/cargar-corpus.mts",
-    "probar-buscar": "node scripts/probar-buscar.mts",
-    "probar-umbral": "node scripts/probar-umbral.mts",
-    "probar-ia": "node scripts/probar-ia.mts"
+    "cargar-corpus": "node --experimental-strip-types scripts/cargar-corpus.mts",
+    "probar-buscar": "node --experimental-strip-types scripts/probar-buscar.mts",
+    "probar-umbral": "node --experimental-strip-types scripts/probar-umbral.mts",
+    "probar-ia": "node --experimental-strip-types scripts/probar-ia.mts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",

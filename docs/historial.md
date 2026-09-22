@@ -4,6 +4,20 @@ Registro de hitos, decisiones técnicas y problemas resueltos que no quedan del 
 
 ---
 
+## 2026-09-22 — Modelo `gemini-2.5-flash` descontinuado + build roto por extensiones `.ts` en imports (T-19)
+
+**Contexto**: Alex retomó T-19 en paralelo, sin saber que ya estaba cerrado en `main`. Al comparar ambas versiones (esencialmente el mismo diseño, `lib/gemini/` vs `lib/ia.ts`) se descartó la suya a favor de la ya integrada con `lib/buscar.ts`, y se usó el hallazgo de su sesión para arreglar dos problemas reales en la de `main`:
+
+1. **`gemini-2.5-flash` ya no está disponible.** La API devuelve 404 y recomienda `gemini-3.6-flash`. Cambiado en `lib/ia.ts` y en las menciones de `plan.md`/`tasks.md`. Verificado en vivo: cita bien la fuente oficial cuando hay fragmentos relevantes, y se abstiene (`suficiente: false`, `fuentes: []`) cuando no los hay.
+2. **`npm run build` fallaba de verdad** (no solo `tsc --noEmit` suelto): `next build` incluye `scripts/*.mts` en el type-check porque `tsconfig.json` los lista en `include`, y esos scripts importan módulos con extensión `.ts` explícita (`"../lib/ia.ts"`) — necesaria para que `node --experimental-strip-types` los resuelva en tiempo de ejecución, pero rechazada por `moduleResolution: "bundler"` sin más. Solución: `allowImportingTsExtensions: true` en `tsconfig.json` (compatible con `noEmit: true`, que ya estaba puesto). Esto no cambia nada en tiempo de ejecución, solo relaja el type-check.
+3. `npm run probar-ia` (y el resto de scripts `.mts`) fallaban en Node 22.15 con `ERR_UNKNOWN_FILE_EXTENSION` porque el type-stripping de `.mts` todavía necesita el flag `--experimental-strip-types` en esa versión de Node (se vuelve innecesario en versiones más nuevas, pero el flag no hace daño si ya no hace falta). Añadido a los cuatro scripts en `package.json`.
+
+**Por qué importa el punto 2**: sin este fix, cualquier push a `main` habría roto el build de Vercel — no se había detectado porque nadie había corrido `npm run build` completo después de añadir los scripts `.mts` al repo.
+
+**Archivos tocados**: `lib/ia.ts`, `tsconfig.json`, `package.json`, `specs/plan.md`, `specs/tasks.md`, `README.md`.
+
+---
+
 ## 2026-09-22 — Cambio de proveedor de IA: Gemini en vez de Claude (T-19)
 
 **Contexto**: `plan.md` y `tasks.md` (escritos antes de T-14) daban por hecho la API de Claude para T-19, bloqueada por "API key de Anthropic con facturación activa". Al retomar el desarrollo esa key seguía sin existir — el equipo no tiene presupuesto para una API de pago ahora mismo.

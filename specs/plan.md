@@ -28,7 +28,7 @@ Las prioridades de la inception son, por este orden: **tiempo → presupuesto �
 | Estilos | Tailwind CSS v4 con los tokens de `Design-tutor.md` | — |
 | Tipografía | Inter vía `next/font` (self-hosted, sin CDN) | — |
 | Base de datos + Auth | Supabase (Postgres + Auth + Row Level Security) | Free tier |
-| IA | API de Google Gemini (`gemini-2.5-flash`) con SDK `@google/genai` | Gratis (free tier, sin tarjeta) |
+| IA | API de Google Gemini (`gemini-3.6-flash`) con SDK `@google/genai` | Gratis (free tier, sin tarjeta) |
 | Despliegue | Vercel (conectado a GitHub, deploy en cada push) | Free tier |
 
 **Por qué Supabase y no un backend propio**: Row Level Security resuelve en la base de datos el requisito más delicado de todo el proyecto — **FR-010, "el conocimiento personal solo para su propietario"**. Sin RLS eso es una condición `WHERE user_id = ...` que hay que acordarse de escribir en cada consulta, y basta olvidarla una vez para tener una fuga de datos en la demo.
@@ -113,11 +113,11 @@ Un solo objeto JSON cubre FR-003, FR-004, FR-006 y FR-008 y hace que la UI sea t
 
 ### Detalles de la llamada al modelo
 
-- **Modelo**: `gemini-2.5-flash` (free tier de Google AI Studio, sin tarjeta).
+- **Modelo**: `gemini-3.6-flash` (free tier de Google AI Studio, sin tarjeta; `gemini-2.5-flash` quedó descontinuado — ver [docs/historial.md](../docs/historial.md)).
 - **Salida estructurada nativa** vía `responseMimeType: "application/json"` + `responseSchema` — el SDK obliga la forma del JSON antes de que llegue al servidor, y aun así se vuelve a validar en `lib/ia.ts` por si acaso.
 - **Reglas de abstención y citación** en `systemInstruction`, fijas para todas las consultas.
 - Sin streaming en el MVP. Las respuestas de tutoría son cortas y el JSON estructurado no se renderiza bien a medias. Streaming es una mejora posterior si la latencia molesta en la demo.
-- Sin prompt caching explícito: el caching de contexto de Gemini requiere el tier de pago; con `gemini-2.5-flash` y un system prompt corto el coste de no cachear es irrelevante (el free tier ya es gratis).
+- Sin prompt caching explícito: el caching de contexto de Gemini requiere el tier de pago; con `gemini-3.6-flash` y un system prompt corto el coste de no cachear es irrelevante (el free tier ya es gratis).
 - **Historial**: se reenvían los últimos N turnos de la conversación para cumplir **FR-009** (mantener contexto). Los fragmentos recuperados van solo en el turno actual, no se acumulan.
 - **Límite del free tier**: cuota diaria de requests suficiente para una demo, pero no para producción real — si esto avanza más allá del MVP, revisar cuotas o pasar a un tier de pago.
 
@@ -187,9 +187,9 @@ Cada fase es desplegable por sí sola. Si algo se tuerce a mitad de semana, lo c
 | **Vie 7** | 0 — Fundaciones | Next.js + TypeScript + Tailwind. Tokens de `Design-tutor.md` a variables CSS. Componentes base: `Boton`, `Tarjeta`, `BurbujaChat`, `CampoTexto`, `AnilloProgreso`. Repo → Vercel. | Cuenta de GitHub + Vercel. **Arrancar el corpus.** |
 | **Lun 10** | 1 — Pantallas (1/2) | Onboarding y Selección de software, con datos falsos. | Revisarlas en un móvil real y dar feedback. |
 | **Mar 11** | 1 — Pantallas (2/2) | Chat (shell) y Progreso. **Hito: las 4 pantallas terminadas.** | Revisión final del diseño. |
-| **Mié 12** | 2 — Datos y sesión | Supabase: esquema de §4, políticas RLS, auth por magic link. Carga del corpus. Endpoint de búsqueda FTS. | Proyecto Supabase creado. **API key de Anthropic con facturación activa.** Corpus entregado. |
+| **Mié 12** | 2 — Datos y sesión | Supabase: esquema de §4, políticas RLS, auth por magic link. Carga del corpus. Endpoint de búsqueda FTS. | Proyecto Supabase creado. **API key de Gemini (free tier, sin tarjeta).** Corpus entregado. |
 | **Jue 13** | 3a — Recuperación | Búsqueda FTS, umbral de relevancia, orden por prioridad de fuente. Camino de abstención (FR-008) funcionando end-to-end. | Validar que las búsquedas encuentran lo que deberían. |
-| **Vie 14** | 3b — Generación | Llamada a Claude con salida estructurada, verificación de citas en servidor, render de chips de origen. **Hito: chat real funcionando.** | Probar preguntas reales. |
+| **Vie 14** | 3b — Generación | Llamada a Gemini con salida estructurada, verificación de citas en servidor, render de chips de origen. **Hito: chat real funcionando.** | Probar preguntas reales. |
 | *15-16* | *colchón* | *Fin de semana. Margen si algo se desvía.* | |
 | **Lun 17** | Cierre | Pruebas end-to-end en móvil, ajuste del corpus según lo que falle, PWA (manifest + icono), guion de demo. | Ensayo de la demo. |
 | **Mar 18** | **Entrega** | | |
@@ -264,4 +264,4 @@ Se descarta explícitamente, para que nadie lo dé por supuesto: moderación y p
 **Hoy, viernes 7**, en paralelo:
 
 1. **Yo**: Fase 0 completa y desplegada — una URL viva con la paleta y la tipografía correctas.
-2. **Vosotros**: crear las cuentas (GitHub/Vercel, Supabase, Anthropic con facturación) y **empezar el corpus**. Es lo único que no puedo adelantar por vosotros y lo que marca si el 18 hay demo o no.
+2. **Vosotros**: crear las cuentas (GitHub/Vercel, Supabase, Gemini) y **empezar el corpus**. Es lo único que no puedo adelantar por vosotros y lo que marca si el 18 hay demo o no.

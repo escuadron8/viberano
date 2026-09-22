@@ -28,7 +28,7 @@ Lo que Tutor **no** es: un LMS de creación de cursos, un sustituto del soporte 
 
 Este repositorio contiene el **MVP de interfaz** del concurso: las pantallas de onboarding, selección de herramienta, chat y progreso, construidas con el sistema de diseño completo (ver [diseño/Design-tutor.md](diseño/Design-tutor.md)). El chat de demo funciona con respuestas guionizadas para poder mostrar en vivo el comportamiento clave del producto (citación de fuentes y abstención) sin depender de infraestructura externa durante la presentación.
 
-La arquitectura completa (Postgres + búsqueda full-text, RLS para separar conocimiento personal, y la llamada real a la API de Claude con verificación de citas en servidor) está diseñada en [specs/plan.md](specs/plan.md) y desglosada tarea a tarea en [specs/tasks.md](specs/tasks.md), pero no forma parte de este MVP de interfaz.
+La arquitectura completa (Postgres + búsqueda full-text, RLS para separar conocimiento personal, y la llamada real a la API de Gemini con verificación de citas en servidor) está diseñada en [specs/plan.md](specs/plan.md) y desglosada tarea a tarea en [specs/tasks.md](specs/tasks.md), pero no forma parte de este MVP de interfaz.
 
 ## Cómo se prueba
 
@@ -57,7 +57,7 @@ Todo el código de este repositorio se ha escrito mediante **vibe coding**: el e
 | Framework | Next.js 16 (App Router) + React 19 + TypeScript |
 | Estilos | Tailwind CSS v4, tokens propios del sistema de diseño de Tutor |
 | Despliegue | Vercel |
-| Planificado, fuera de este MVP | Supabase (Postgres + Auth + RLS) y API de Claude para el motor de respuesta real — ver [specs/plan.md](specs/plan.md) |
+| Planificado, fuera de este MVP | Supabase (Postgres + Auth + RLS) y API de Gemini para el motor de respuesta real — ver [specs/plan.md](specs/plan.md) |
 
 ## Estructura del repo
 

@@ -168,7 +168,7 @@ Endpoint que recibe una pregunta y, cuando no hay resultados por encima del umbr
 ## Fase 3b — Generación
 
 ### T-19 · Cliente de Gemini y contrato de respuesta 🔴
-`@google/genai` con `gemini-2.5-flash` (free tier, sin tarjeta — decisión del 2026-09-22, ver [docs/historial.md](../docs/historial.md)). `lib/ia.ts` con `systemInstruction` con las reglas de abstención y citación, y salida estructurada nativa (`responseMimeType: "application/json"` + `responseSchema`) con el esquema `{suficiente, respuesta, fuentes[], multiples_fuentes}` de [plan.md §3](plan.md). Sin streaming.
+`@google/genai` con `gemini-3.6-flash` (free tier, sin tarjeta — decisión del 2026-09-22, ver [docs/historial.md](../docs/historial.md)). `lib/ia.ts` con `systemInstruction` con las reglas de abstención y citación, y salida estructurada nativa (`responseMimeType: "application/json"` + `responseSchema`) con el esquema `{suficiente, respuesta, fuentes[], multiples_fuentes}` de [plan.md §3](plan.md). Sin streaming.
 
 - **Entregable**: `lib/ia.ts` + `scripts/probar-ia.mts`.
 - **Prueba**: `npm run probar-ia` — envía una pregunta con fragmentos falsos y recibe un JSON que valida contra el esquema; una segunda pregunta deliberadamente no cubierta por esos fragmentos se abstiene.
