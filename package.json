@@ -10,7 +10,9 @@
     "cargar-corpus": "node --experimental-strip-types scripts/cargar-corpus.mts",
     "probar-buscar": "node --experimental-strip-types scripts/probar-buscar.mts",
     "probar-umbral": "node --experimental-strip-types scripts/probar-umbral.mts",
-    "probar-ia": "node --experimental-strip-types scripts/probar-ia.mts"
+    "probar-ia": "node --experimental-strip-types scripts/probar-ia.mts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
@@ -22,12 +24,13 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^22.20.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.1"
   }
 }

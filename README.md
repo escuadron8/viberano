@@ -43,14 +43,17 @@ El repositorio empezó siendo un MVP de interfaz con respuestas guionizadas, y d
 
 ## Cómo se prueba
 
-No hay suite de tests automatizados todavía; la verificación es manual, sobre la propia app y sobre unos scripts de comprobación:
+La verificación es en buena parte manual, sobre la propia app, más una suite de tests automatizados (Vitest) que por ahora cubre `/api/consulta` y unos scripts de comprobación del motor:
 
 ```bash
 npm install
-npm run dev      # http://localhost:3000, recorre las 4 pantallas
+npm run dev       # http://localhost:3000, recorre las 4 pantallas
+npm test          # suite de tests (Vitest); npm run test:watch para el modo watch
 npm run lint      # ESLint (config de Next.js)
 npm run build     # build de producción
 ```
+
+`npm test` no necesita ni red ni base de datos: los tests de [tests/](tests/) sustituyen Supabase, la recuperación y Gemini por dobles. El que sostiene SC-002 inyecta una respuesta del modelo con un id de fuente inventado y comprueba que el endpoint la descarta entera en vez de devolverla.
 
 Los scripts del motor necesitan las variables de [.env.example](.env.example) en un `.env.local` (Supabase y una `GEMINI_API_KEY` del free tier):
 

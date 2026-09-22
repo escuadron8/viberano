@@ -4,6 +4,33 @@ Registro de hitos, decisiones técnicas y problemas resueltos que no quedan del 
 
 ---
 
+## 2026-09-22 — Primera suite de tests: Vitest y el test que sostiene SC-002 (T-20)
+
+**Contexto**: el endpoint `/api/consulta` con verificación de citas (FR-007) estaba construido y verificado a mano desde el commit `d0111da`, pero T-20 seguía en 🟡 porque su prueba — "inyectar una respuesta del modelo con un id de fuente inventado y comprobar que el endpoint la rechaza" — no existía como test automatizado. El repo no tenía suite de tests de ningún tipo.
+
+**Por qué no se puede probar esto contra el modelo real**: no hay forma fiable de conseguir que Gemini invente un id a propósito. Lo que hay que probar no es el comportamiento del modelo (eso ya lo mira `npm run probar-ia`, y es no determinista por naturaleza), sino la defensa determinista del servidor: qué hace el endpoint cuando le llega una respuesta con una cita falsa. Por eso el test sustituye `generarRespuesta()` por un doble que devuelve exactamente la respuesta que queremos.
+
+**Decisión — Vitest**: es el camino que documenta el propio Next 16.3.1 (`node_modules/next/dist/docs/01-app/02-guides/testing/vitest.md`). La alternativa era `node:test` con `--experimental-strip-types`, siguiendo el estilo de los scripts `.mts` y sin añadir dependencias, pero necesitaba dos flags experimentales (`--experimental-test-module-mocks`) y un hook de resolución propio para el alias `@/` que usa `route.ts` — más andamiaje y más frágil. Vitest resuelve el alias y mockea módulos sin nada de eso, y sirve igual para los tests de componentes que pedirá T-21.
+
+**Dos detalles del montaje**:
+- El doc de Next todavía manda instalar `vite-tsconfig-paths`; esta versión de Vite avisa de que ya resuelve los `paths` de tsconfig nativamente. Se usa `resolve.tsconfigPaths: true` y el plugin se desinstaló.
+- `npm install vitest` chocaba con `@types/node@^20` (Vitest 5 pide `^22 || >=24`). Se subió a `@types/node@^22`, que además es lo correcto: el proyecto se ejecuta en Node 22.15.
+
+**Qué cubre `tests/api-consulta.test.ts`** (7 tests, sin red ni base de datos):
+- Cita inventada → se descarta la respuesta y se cae a la abstención (**la prueba de SC-002**).
+- Cita parcialmente inventada (una válida + una falsa) → se descarta la respuesta **entera**, no se devuelve "la parte buena".
+- Caso de control: con todas las citas válidas, la respuesta se devuelve tal cual. Sin este, un endpoint que se abstuviera siempre pasaría los dos tests de arriba.
+- Sin fragmentos por encima del umbral → abstención **sin llamar al modelo** (FR-008, la prueba de T-18, ahora automatizada).
+- Entrada inválida (400) y sin sesión (401), comprobando además que no se toca el corpus ni la IA.
+
+**Verificado que el test detecta el fallo de verdad**: desactivando la comprobación de citas en `route.ts` (`if (false && !citasValidas)`), fallan exactamente los 2 tests de citas y los otros 5 siguen pasando. El endpoint se restauró después.
+
+**Nota**: el mensaje de abstención está copiado literalmente en el test en vez de importado de `route.ts`, porque un route handler de App Router solo puede exportar los métodos HTTP y sus opciones de configuración — exportar la constante rompería el build.
+
+**Archivos tocados**: `tests/api-consulta.test.ts` (nuevo), `vitest.config.mts` (nuevo), `package.json`, `README.md`, `specs/tasks.md`.
+
+---
+
 ## 2026-09-22 — Modelo `gemini-2.5-flash` descontinuado + build roto por extensiones `.ts` en imports (T-19)
 
 **Contexto**: Alex retomó T-19 en paralelo, sin saber que ya estaba cerrado en `main`. Al comparar ambas versiones (esencialmente el mismo diseño, `lib/gemini/` vs `lib/ia.ts`) se descartó la suya a favor de la ya integrada con `lib/buscar.ts`, y se usó el hallazgo de su sesión para arreglar dos problemas reales en la de `main`:

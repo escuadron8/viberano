@@ -12,13 +12,14 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 
 ## Dónde nos quedamos
 
-*Actualizado el 2026-09-22, commit `f76c7ba`.*
+*Actualizado el 2026-09-22, al cerrar T-20.*
 
-**Cerradas**: T-01 → T-11, T-13, T-14, T-16 → T-19. Toda la Fase 0, la Fase 1, la Fase 2 (salvo T-15) y la Fase 3a están hechas, y el motor de respuesta de la Fase 3b responde y se abstiene de verdad contra Gemini.
+**Cerradas**: T-01 → T-11, T-13, T-14, T-16 → T-20. Toda la Fase 0, la Fase 1, la Fase 2 (salvo T-15), la Fase 3a y el motor de respuesta de la Fase 3b están hechos: `/api/consulta` responde, se abstiene y descarta las citas inventadas, con un test automatizado que lo sostiene.
 
 **Construidas pero sin cerrar** (🟡):
-- **T-12** — las políticas RLS están escritas y aplicadas (`supabase/migrations/0002_rls.sql`), pero la prueba de aislamiento con dos usuarios (FR-010) no consta ejecutada en ningún sitio. Es la prueba que la propia tarea llama "la más importante de la fase".
-- **T-20** — **el endpoint ya está construido** (`app/api/consulta/route.ts`, commit `d0111da`): recupera, aplica el umbral, llama a Gemini y cae a la abstención si algún `id` citado no estaba entre los fragmentos enviados. Lo único que falta es **el test automatizado** que inyecta un id inventado y comprueba que el endpoint lo rechaza; el repo no tiene suite de tests todavía, y ese test es lo que sostiene SC-002. Es decir: la sesión de T-20 es montar ese test, no escribir el endpoint.
+- **T-12** — las políticas RLS están escritas y aplicadas (`supabase/migrations/0002_rls.sql`), pero la prueba de aislamiento con dos usuarios (FR-010) no consta ejecutada en ningún sitio. Es la prueba que la propia tarea llama "la más importante de la fase". Es la única deuda de prueba que queda.
+
+**El repo ya tiene suite de tests**: `npm test` (Vitest, ver [docs/historial.md](../docs/historial.md), entrada del 2026-09-22). De aquí en adelante, una tarea cuya prueba se pueda automatizar debería traer su test.
 
 **Siguiente en el camino crítico**: **T-21** (chat real conectado), que ya tiene sus dependencias cerradas — se puede construir contra el corpus de relleno. En paralelo, **T-15 sigue siendo el riesgo nº1**: sin el corpus real no se puede recalibrar el umbral de T-17 ni probar T-21 con preguntas de verdad.
 
@@ -47,7 +48,7 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 | T-17 | Umbral de relevancia y orden de fuentes | ✅ | 3a | T-16 | ✅ 10/10 y 4/5 — recalibrar con T-15 |
 | T-18 | Camino de abstención end-to-end | ✅ | 3a | T-17 |  |
 | T-19 | Cliente de Gemini y contrato de respuesta | ✅ | 3b | T-01 | ✅ key en `.env.local` |
-| T-20 | Endpoint `/api/consulta` con verificación de citas | 🟡 | 3b | T-18, T-19 | 🟡 falta el test de cita inventada |
+| T-20 | Endpoint `/api/consulta` con verificación de citas | ✅ | 3b | T-18, T-19 | ✅ test de cita inventada en verde |
 | T-21 | Chat real conectado + chips de origen | ⬜ | 3b | T-08, T-20 | 🔴 preguntas reales |
 | T-22 | Contexto de conversación (FR-009) | ⬜ | 3b | T-21 |  |
 | T-23 | PWA instalable | ⬜ | Cierre | T-04 |  |
@@ -56,7 +57,7 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 
 **Corte mínimo del MVP**: T-01 → T-22, más T-23 y T-25. T-24 es deseable pero prescindible.
 
-**Queda del corte mínimo**: T-15, T-21, T-22, T-23 y T-25, más cerrar las dos pruebas pendientes de T-12 y T-20.
+**Queda del corte mínimo**: T-15, T-21, T-22, T-23 y T-25, más cerrar la prueba pendiente de T-12.
 
 ---
 
@@ -197,12 +198,13 @@ Endpoint que recibe una pregunta y, cuando no hay resultados por encima del umbr
 - **Necesita**: pegar una `GEMINI_API_KEY` en `.env.local` — gratis, sin tarjeta, en https://aistudio.google.com/apikey.
 - **Estado**: cerrada. La key ya está en `.env.local` y `npm run probar-ia` pasa contra `gemini-3.6-flash` (el `2.5-flash` original quedó descontinuado, ver [docs/historial.md](../docs/historial.md), entrada del 2026-09-22): cita la fuente oficial cuando hay fragmentos relevantes y se abstiene con `suficiente: false` cuando no los hay.
 
-### T-20 · Endpoint `/api/consulta` con verificación de citas 🟡
+### T-20 · Endpoint `/api/consulta` con verificación de citas ✅
 Une T-18 y T-19: recuperar → umbral → ordenar → prompt con fragmentos numerados → respuesta estructurada → **verificar en servidor que todo `id` citado existe entre los fragmentos enviados**; si no, descartar la respuesta y caer a la abstención de T-18 (FR-007).
 
 - **Prueba**: test que inyecta una respuesta del modelo con un id de fuente inventado y comprueba que el endpoint la rechaza en vez de devolverla. Este test es lo que sostiene SC-002.
 - **Nota de alcance**: la persistencia en `mensaje` (pregunta, respuesta, `fuentes`) queda para T-21 — ver **Estado** más abajo — hoy `/api/consulta` no recibe `conversacion_id` porque todavía no existe la pantalla que crea y gestiona la conversación. Escribir esa persistencia ahora sería inventar un ciclo de vida de `conversacion` sin que la UI lo haya definido.
-- **Estado**: el código está hecho y verificado a mano — `app/api/consulta/route.ts` recupera, aplica el umbral, llama a `generarRespuesta()` y descarta la respuesta entera si algún `id` citado no estaba entre los fragmentos enviados. Lo que falta es **el test automatizado** de la prueba: el repo no tiene suite de tests, y ese test es lo que sostiene SC-002. Por eso queda en 🟡 y no en ✅.
+- **Entregable**: `app/api/consulta/route.ts` + `tests/api-consulta.test.ts` (`npm test`), la primera suite de tests del repo.
+- **Estado**: cerrada. El endpoint recupera, aplica el umbral, llama a `generarRespuesta()` y descarta la respuesta **entera** si algún `id` citado no estaba entre los fragmentos enviados. El test inyecta esa respuesta con un id inventado y comprueba que el endpoint se abstiene en vez de devolverla; cubre además la cita parcialmente inventada, el caso de control con citas válidas, la abstención sin llamar al modelo (T-18) y los 400/401. Se comprobó que el test detecta el fallo de verdad: desactivando la verificación en `route.ts` fallan exactamente los 2 tests de citas. Montaje y decisión de herramienta en [docs/historial.md](../docs/historial.md).
 
 ### T-21 · Chat real conectado + chips de origen ⬜ 🔴
 Sustituir los datos falsos de T-08 por llamadas a `/api/consulta`. Chips pintados desde `fuentes` con su `tipo`, aviso de "varias fuentes" cuando `multiples_fuentes`, burbuja de abstención cuando `suficiente: false`. Estados de carga y de error. Crear/reutilizar la fila de `conversacion` al entrar al chat de una herramienta y pasar su `id` a `/api/consulta`, que persiste ahí cada `mensaje` (pregunta, respuesta, `fuentes`) — movido aquí desde T-20 porque hasta que existe esta pantalla no hay `conversacion_id` que persistir.
