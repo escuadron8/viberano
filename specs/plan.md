@@ -117,8 +117,8 @@ Un solo objeto JSON cubre FR-003, FR-004, FR-006 y FR-008 y hace que la UI sea t
 - **Reglas de abstención y citación** en `systemInstruction`, fijas para todas las consultas.
 - Sin streaming en el MVP. Las respuestas de tutoría son cortas y el JSON estructurado no se renderiza bien a medias. Streaming es una mejora posterior si la latencia molesta en la demo.
 - Sin prompt caching explícito: el caching de contexto de Gemini requiere el tier de pago; con `gemini-3.6-flash` y un system prompt corto el coste de no cachear es irrelevante (el free tier ya es gratis).
-- **Historial**: se reenvían los últimos N turnos de la conversación para cumplir **FR-009** (mantener contexto). Los fragmentos recuperados van solo en el turno actual, no se acumulan.
-- **Límite del free tier**: cuota diaria de requests suficiente para una demo, pero no para producción real — si esto avanza más allá del MVP, revisar cuotas o pasar a un tier de pago.
+- **Historial**: se reenvían los últimos 3 turnos de la conversación (leídos de `mensaje`) para cumplir **FR-009** (mantener contexto). Los fragmentos recuperados van solo en el turno actual, no se acumulan. Si la pregunta actual no encuentra fragmentos por sí sola, la búsqueda se repite con las preguntas anteriores delante (T-22, `recuperarConContexto()`).
+- **Límite del free tier**: **20 requests al día** por proyecto y modelo (medido el 2026-09-23 con un 429) — justo para una demo si no se gasta ensayando el mismo día, y nada para producción real — si esto avanza más allá del MVP, revisar cuotas o pasar a un tier de pago.
 
 ---
 

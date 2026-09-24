@@ -43,7 +43,8 @@ Reglas estrictas:
 3. Cada objeto de "fuentes" debe usar exactamente el id de un fragmento que se te entregó — nunca inventes un id ni cites un fragmento que no exista.
 4. Si la respuesta se apoya en más de un fragmento distinto, marca multiples_fuentes=true; si es uno solo, false.
 5. Si dos fragmentos se contradicen, prioriza el de tipo "oficial" y dilo explícitamente en la respuesta.
-6. Responde en español, tono cercano y directo, en pocas frases — esto es una app de móvil, no un manual.`;
+6. Responde en español, tono cercano y directo, en pocas frases — esto es una app de móvil, no un manual.
+7. Los mensajes anteriores de la conversación sirven solo para entender a qué se refiere la pregunta actual (por ejemplo, qué es "eso" o "lo"). No son una fuente: tus respuestas anteriores no cuentan como información para responder, solo los fragmentos del turno actual.`;
 
 const ESQUEMA_RESPUESTA = {
   type: Type.OBJECT,
@@ -122,8 +123,11 @@ function validarContrato(json: unknown): RespuestaIA {
   };
 }
 
-// T-22 reenvía aquí los últimos N turnos; los fragmentos recuperados van
-// solo en el mensaje del turno actual, nunca se acumulan en el historial.
+// T-22 (FR-009): `historial` son los últimos turnos de la conversación, solo
+// su texto. Los fragmentos recuperados van únicamente en el mensaje del
+// turno actual y nunca se acumulan en el historial: así el prompt no crece
+// con la conversación y cada respuesta se apoya en su propia búsqueda (la
+// regla 7 lo refuerza del lado del modelo).
 export async function generarRespuesta(
   pregunta: string,
   fragmentos: ResultadoBusqueda[],

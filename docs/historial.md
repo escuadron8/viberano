@@ -4,6 +4,52 @@ Registro de hitos, decisiones técnicas y problemas resueltos que no quedan del 
 
 ---
 
+## 2026-09-23 — Contexto de conversación y búsqueda de respaldo (T-22)
+
+**Contexto**: T-22 pedía reenviar al modelo los últimos N turnos (FR-009). `lib/ia.ts` ya aceptaba `historial` desde T-19 y T-21 ya guardaba cada turno en `mensaje`; faltaba leerlo y pasarlo.
+
+**El problema que la tarea no mencionaba**: el historial solo llega al modelo si antes hay fragmentos, y la búsqueda usaba solo la pregunta actual. "¿Y cómo lo deshago?" aporta un único lexema (`deshag`) y `MINIMO_COINCIDENCIAS` exige 3, así que se abstenía siempre, antes de llamar al modelo. Con el FTS real, las tres preguntas de seguimiento probadas daban "(nada)".
+
+**Decisión — búsqueda de respaldo con las preguntas anteriores** (`recuperarConContexto()` en `lib/buscar.ts`): si la pregunta sola no pasa el umbral, se repite la búsqueda con las preguntas anteriores del usuario (las de los 3 turnos) delante. Resultado contra el FTS real:
+
+| Turno anterior → seguimiento | Sola | Con contexto (primer resultado) |
+|---|---|---|
+| fusionar cuentas → "¿Y cómo lo deshago?" | nada | Cómo fusionar cuentas duplicadas |
+| informe de oportunidades → "¿Y cómo lo comparto?" | nada | Cómo crear un informe de oportunidades |
+| vista de lista → "¿Y si ya no la necesito?" | nada | Cómo crear y filtrar una vista de lista |
+| informe → "¿Cómo abro un caso de soporte…?" (cambio de tema) | caso de soporte | caso de soporte (sin cambios) |
+| fusionar cuentas → "¿Cuál es la capital de Mongolia?" | nada | Cómo fusionar cuentas duplicadas ⚠️ |
+
+**Alternativas descartadas**:
+- *Buscar siempre con el historial mezclado*: cambiaría el comportamiento de las preguntas que se sostienen solas (y con ello la calibración de T-17) y arrastraría el tema viejo en cada cambio de tema. Por eso es solo un respaldo.
+- *Exigir que los fragmentos del respaldo coincidan también con alguna palabra de la pregunta actual* (para frenar el caso de Mongolia): el stemmer español no une las conjugaciones irregulares (`deshago` → `deshag`, `deshacer` → `deshac`), así que este filtro tumbaba justo la prueba de T-22.
+- *Reformular la pregunta con el modelo antes de buscar* ("¿y cómo lo deshago?" → "¿cómo deshago una fusión de cuentas?"): es lo más robusto, pero gasta una segunda llamada por pregunta, y el free tier da 20 al día (ver abajo). Es el siguiente paso si el respaldo léxico se queda corto con el corpus real.
+- *Volver a enviar los fragmentos citados en el turno anterior*: contradice "los fragmentos no se acumulan" y solo sirve si la respuesta al seguimiento está en el mismo documento. El respaldo ya los encuentra en los casos probados, porque la pregunta anterior los vuelve a traer.
+
+**Precio asumido (⚠️ de la tabla)**: una pregunta sin relación hecha a mitad de conversación recibe los fragmentos del tema anterior. Lo que la frena es la regla 2 del prompt (abstenerse si los fragmentos no cubren la pregunta) y la verificación de citas de T-20. Es la misma defensa que ya protege cualquier pregunta límite, pero conviene saberlo.
+
+**Otras decisiones**:
+- El historial se lee de la base de datos y no del cuerpo de la petición, para que un cliente no pueda meter turnos del "tutor" inventados en el prompt. RLS hace que un `conversacion_id` ajeno devuelva cero filas.
+- A la búsqueda solo van las preguntas del usuario. Las respuestas del tutor son texto generado, y buscar con ellas haría que el modelo encontrara lo que él mismo dijo.
+- Los dos mensajes de un turno comparten `creado_en` (se insertan en la misma transacción), así que el orden se fija en código: dentro del mismo instante, la pregunta va antes.
+- Regla 7 en `REGLAS_SISTEMA`: el historial sirve para entender la pregunta y las respuestas anteriores no son fuente.
+- Si la lectura del historial falla, se contesta sin contexto; igual que la persistencia, es un extra y no parte de la respuesta.
+
+**Cuota del free tier: 20 peticiones al día**. La prueba con Gemini real se cortó con un 429 (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`, límite 20). Antes de cortarse, la primera respuesta sobre fusionar cuentas ya incluía "esta acción no se puede deshacer". **Para la demo: no ensayar con el modelo real el mismo día**, o usar una segunda key de otro proyecto de AI Studio.
+
+**T-22 cerrada el 2026-09-24**, con la cuota ya renovada, contra Gemini real y el FTS real (el mismo pipeline que `/api/consulta`, sin la capa HTTP):
+- "¿Cómo fusiono dos cuentas duplicadas?" → responde con los pasos y avisa de que no se puede deshacer.
+- "¿Y cómo lo deshago?" → 2 fragmentos por el respaldo, `suficiente=true`, 1 cita válida: *"La fusión de cuentas duplicadas no se puede deshacer…"*. Mantiene el hilo.
+- "¿Cuál es la capital de Mongolia?" → recibe el fragmento de fusión (el ⚠️ de la tabla) y **se abstiene** (`suficiente=false`, sin fuentes). La regla 2 aguanta el caso de riesgo.
+
+La primera llamada del día devolvió **503** (modelo saturado, no cuota) y pasó al reintentar a los 15 s. La app no reintenta sola: un 503 llega al usuario como "El tutor no está disponible ahora mismo". Si pasa en la demo, basta con volver a enviar.
+
+**Tests**: 28 (antes 19). `tests/api-consulta.test.ts` cubre que el historial llega al modelo en orden, que a la búsqueda solo van las preguntas del usuario, el límite de 3 turnos, que sin conversación no se lee nada y que un fallo de lectura no rompe la respuesta. `tests/buscar.test.ts` (nuevo) cubre el respaldo: no se activa si la pregunta encuentra algo sola, se activa si no encuentra nada, respeta el umbral de T-17 y sin historial no hace una segunda búsqueda. Comprobado que detectan el fallo: quitando el historial de la llamada a `generarRespuesta()` fallan exactamente los 3 tests que lo afirman.
+
+**Archivos tocados**: `app/api/consulta/route.ts`, `lib/buscar.ts`, `lib/ia.ts`, `tests/api-consulta.test.ts`, `tests/buscar.test.ts` (nuevo), `specs/tasks.md`, `specs/plan.md`.
+
+---
+
 ## 2026-09-23 — El chat deja de fingir: pantalla conectada a `/api/consulta` (T-21)
 
 **Contexto**: el motor de respuesta llevaba cerrado desde T-20, pero la pantalla de chat seguía siendo la de T-08 — dos guiones de datos falsos, uno genérico con los cuatro casos de fuente y la secuencia guionizada de n8n que se grabó para el vídeo de pitch. T-21 es lo que une las dos mitades del producto.

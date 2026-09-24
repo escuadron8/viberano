@@ -20,18 +20,18 @@ vi.mock("@/lib/supabase/server", () => ({ crearClienteServidor: vi.fn() }));
 // que el test quiere comprobar es justo que el endpoint la aplica antes de
 // buscar, no que la llama.
 vi.mock("@/lib/buscar", () => ({
-  recuperar: vi.fn(),
+  recuperarConContexto: vi.fn(),
   normalizarHerramienta: (herramienta: string) => herramienta.trim().toLowerCase(),
 }));
 vi.mock("@/lib/ia", () => ({ generarRespuesta: vi.fn() }));
 
 import { POST } from "@/app/api/consulta/route";
 import { crearClienteServidor } from "@/lib/supabase/server";
-import { recuperar } from "@/lib/buscar";
+import { recuperarConContexto } from "@/lib/buscar";
 import { generarRespuesta } from "@/lib/ia";
 
 const crearClienteServidorMock = vi.mocked(crearClienteServidor);
-const recuperarMock = vi.mocked(recuperar);
+const recuperarMock = vi.mocked(recuperarConContexto);
 const generarRespuestaMock = vi.mocked(generarRespuesta);
 
 // Copia literal del mensaje de app/api/consulta/route.ts. No se importa de
@@ -93,15 +93,21 @@ function respuestaIA(fuentes: RespuestaIA["fuentes"]): RespuestaIA {
 
 const ID_CONVERSACION = "33333333-3333-4333-8333-333333333333";
 
-// El doble de Supabase: `auth.getUser()` para la sesión y `from(...).insert()`
-// para la persistencia del turno (T-21). `insertar` se deja accesible para
-// poder afirmar qué filas se escribieron.
+// El doble de Supabase: `auth.getUser()` para la sesión, `from(...).insert()`
+// para la persistencia del turno (T-21) y la cadena
+// `from(...).select().eq().order().limit()` para leer el historial (T-22).
+// `insertar` y `leerMensajes` se dejan accesibles para poder afirmar qué se
+// escribió y controlar qué historial hay.
 let insertar: ReturnType<typeof vi.fn>;
+let leerMensajes: ReturnType<typeof vi.fn>;
 
 function sesionDe(usuario: { id: string } | null) {
   return {
     auth: { getUser: async () => ({ data: { user: usuario } }) },
-    from: vi.fn(() => ({ insert: insertar })),
+    from: vi.fn(() => ({
+      insert: insertar,
+      select: () => ({ eq: () => ({ order: () => ({ limit: leerMensajes }) }) }),
+    })),
   } as unknown as Awaited<ReturnType<typeof crearClienteServidor>>;
 }
 
@@ -112,6 +118,7 @@ function filasInsertadas() {
 beforeEach(() => {
   vi.clearAllMocks();
   insertar = vi.fn(async () => ({ error: null }));
+  leerMensajes = vi.fn(async () => ({ data: [], error: null }));
   crearClienteServidorMock.mockResolvedValue(sesionDe({ id: "usuario-a" }));
   recuperarMock.mockResolvedValue(FRAGMENTOS_ENVIADOS);
 });
@@ -220,7 +227,8 @@ describe("POST /api/consulta — nombre de la herramienta", () => {
       expect.anything(),
       "¿Cómo creo un informe?",
       "salesforce",
-      "usuario-a"
+      "usuario-a",
+      []
     );
   });
 });
@@ -312,6 +320,97 @@ describe("POST /api/consulta — fallo del proveedor de IA", () => {
     // poder distinguir un error técnico de una abstención real.
     expect(respuesta.status).toBe(502);
     expect(await respuesta.json()).not.toHaveProperty("suficiente");
+
+    errorDeConsola.mockRestore();
+  });
+});
+
+// T-22 (FR-009): el contexto de la conversación. Lo que se comprueba aquí es
+// la fontanería del endpoint — que el historial se lee de la base de datos,
+// en orden, y llega tanto a la búsqueda como al modelo. Si el modelo mantiene
+// el hilo de verdad lo mira la prueba manual de T-22, no este test.
+describe("POST /api/consulta — contexto de conversación (FR-009, T-22)", () => {
+  const INSTANTE_1 = "2026-09-23T10:00:00.000Z";
+  const INSTANTE_2 = "2026-09-23T10:01:00.000Z";
+
+  it("reenvía los turnos anteriores al modelo en orden cronológico, pregunta antes que respuesta", async () => {
+    // Tal y como los devuelve la consulta: del más reciente al más antiguo,
+    // y con los dos mensajes de cada turno empatados en `creado_en` (se
+    // insertan juntos), aquí con la respuesta delante a propósito.
+    leerMensajes.mockResolvedValue({
+      data: [
+        { rol: "tutor", contenido: "No se puede deshacer.", creado_en: INSTANTE_2 },
+        { rol: "usuario", contenido: "¿Y cómo lo deshago?", creado_en: INSTANTE_2 },
+        { rol: "tutor", contenido: "Usa 'Fusionar cuentas'.", creado_en: INSTANTE_1 },
+        { rol: "usuario", contenido: "¿Cómo fusiono cuentas duplicadas?", creado_en: INSTANTE_1 },
+      ],
+      error: null,
+    });
+    generarRespuestaMock.mockResolvedValue(respuestaIA([{ id: FRAGMENTOS_ENVIADOS[0].id, tipo: "oficial" }]));
+
+    await POST(
+      peticion({ pregunta: "¿Y eso quién lo puede hacer?", herramienta: "salesforce", conversacion_id: ID_CONVERSACION })
+    );
+
+    expect(generarRespuestaMock).toHaveBeenCalledWith("¿Y eso quién lo puede hacer?", FRAGMENTOS_ENVIADOS, [
+      { rol: "usuario", contenido: "¿Cómo fusiono cuentas duplicadas?" },
+      { rol: "tutor", contenido: "Usa 'Fusionar cuentas'." },
+      { rol: "usuario", contenido: "¿Y cómo lo deshago?" },
+      { rol: "tutor", contenido: "No se puede deshacer." },
+    ]);
+  });
+
+  it("pasa a la búsqueda solo las preguntas anteriores del usuario, no las respuestas del tutor", async () => {
+    leerMensajes.mockResolvedValue({
+      data: [
+        { rol: "tutor", contenido: "Usa 'Fusionar cuentas'.", creado_en: INSTANTE_1 },
+        { rol: "usuario", contenido: "¿Cómo fusiono cuentas duplicadas?", creado_en: INSTANTE_1 },
+      ],
+      error: null,
+    });
+    generarRespuestaMock.mockResolvedValue(respuestaIA([{ id: FRAGMENTOS_ENVIADOS[0].id, tipo: "oficial" }]));
+
+    await POST(peticion({ pregunta: "¿Y cómo lo deshago?", herramienta: "salesforce", conversacion_id: ID_CONVERSACION }));
+
+    // Las respuestas del tutor no entran en la búsqueda: son texto generado,
+    // y buscar con él haría que el modelo acabara encontrando lo que él
+    // mismo dijo.
+    expect(recuperarMock).toHaveBeenCalledWith(expect.anything(), "¿Y cómo lo deshago?", "salesforce", "usuario-a", [
+      "¿Cómo fusiono cuentas duplicadas?",
+    ]);
+  });
+
+  it("pide como mucho los últimos 3 turnos", async () => {
+    generarRespuestaMock.mockResolvedValue(respuestaIA([{ id: FRAGMENTOS_ENVIADOS[0].id, tipo: "oficial" }]));
+
+    await POST(peticion({ pregunta: "¿Cómo creo un informe?", herramienta: "salesforce", conversacion_id: ID_CONVERSACION }));
+
+    expect(leerMensajes).toHaveBeenCalledWith(6);
+  });
+
+  it("no lee historial si la petición no trae conversación", async () => {
+    generarRespuestaMock.mockResolvedValue(respuestaIA([{ id: FRAGMENTOS_ENVIADOS[0].id, tipo: "oficial" }]));
+
+    await POST(peticion({ pregunta: "¿Cómo creo un informe?", herramienta: "salesforce" }));
+
+    expect(leerMensajes).not.toHaveBeenCalled();
+    expect(generarRespuestaMock).toHaveBeenCalledWith("¿Cómo creo un informe?", FRAGMENTOS_ENVIADOS, []);
+  });
+
+  it("responde sin contexto en vez de fallar si no se puede leer el historial", async () => {
+    leerMensajes.mockResolvedValue({ data: null, error: { message: "conexión perdida" } });
+    const valida = respuestaIA([{ id: FRAGMENTOS_ENVIADOS[0].id, tipo: "oficial" }]);
+    generarRespuestaMock.mockResolvedValue(valida);
+    const errorDeConsola = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const respuesta = await POST(
+      peticion({ pregunta: "¿Cómo creo un informe?", herramienta: "salesforce", conversacion_id: ID_CONVERSACION })
+    );
+
+    expect(respuesta.status).toBe(200);
+    expect(await respuesta.json()).toEqual(valida);
+    expect(generarRespuestaMock).toHaveBeenCalledWith("¿Cómo creo un informe?", FRAGMENTOS_ENVIADOS, []);
+    expect(errorDeConsola).toHaveBeenCalled();
 
     errorDeConsola.mockRestore();
   });

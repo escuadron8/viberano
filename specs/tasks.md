@@ -50,14 +50,14 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 | T-19 | Cliente de Gemini y contrato de respuesta | ✅ | 3b | T-01 | ✅ key en `.env.local` |
 | T-20 | Endpoint `/api/consulta` con verificación de citas | ✅ | 3b | T-18, T-19 | ✅ test de cita inventada en verde |
 | T-21 | Chat real conectado + chips de origen | ✅ | 3b | T-08, T-20 | ✅ probado en móvil |
-| T-22 | Contexto de conversación (FR-009) | ⬜ | 3b | T-21 |  |
+| T-22 | Contexto de conversación (FR-009) | ✅ | 3b | T-21 | ✅ probado con Gemini real |
 | T-23 | PWA instalable | ⬜ | Cierre | T-04 |  |
 | T-24 | Botón de reportar respuesta | ⬜ | Cierre | T-21 |  |
 | T-25 | Pruebas end-to-end en móvil y guion de demo | ⬜ | Cierre | T-21, T-23 | 🔴 ensayo |
 
 **Corte mínimo del MVP**: T-01 → T-22, más T-23 y T-25. T-24 es deseable pero prescindible.
 
-**Queda del corte mínimo**: T-15, T-22, T-23 y T-25, más cerrar la prueba pendiente de T-12.
+**Queda del corte mínimo**: T-15, T-23 y T-25, más cerrar la prueba pendiente de T-12.
 
 ---
 
@@ -220,10 +220,17 @@ Sustituir los datos falsos de T-08 por llamadas a `/api/consulta`. Chips pintado
   - Tests nuevos en `tests/api-consulta.test.ts` y `tests/api-conversacion.test.ts` (19 en total): persistencia del turno, abstención también persistida, normalización del nombre de la herramienta, respuesta devuelta pese a un fallo de guardado, 502 del proveedor y el alta de conversación con el usuario de la sesión. Verificado que detectan el fallo: desactivando normalización y persistencia en `route.ts` fallan exactamente esos 4 tests.
   - Detalle de las decisiones en [docs/historial.md](../docs/historial.md).
 
-### T-22 · Contexto de conversación (FR-009) ⬜
+### T-22 · Contexto de conversación (FR-009) ✅
 Reenviar los últimos N turnos al modelo. Los fragmentos recuperados van solo en el turno actual, no se acumulan.
 
 - **Prueba**: preguntar algo, y después "¿y cómo lo deshago?" sin repetir el sujeto — la respuesta mantiene el hilo.
+- **Hecho**. Prueba pasada el 2026-09-24 con Gemini real: tras "¿Cómo fusiono dos cuentas duplicadas?", "¿Y cómo lo deshago?" responde que la fusión no se puede deshacer (cita válida), y "¿Cuál es la capital de Mongolia?" a mitad de conversación se abstiene aunque recibe el fragmento de fusión.
+  - `/api/consulta` lee de `mensaje` los últimos **3 turnos** de la conversación (de la base de datos, nunca del cuerpo de la petición) y se los pasa a `generarRespuesta()`. Si la lectura falla, contesta sin contexto.
+  - **Búsqueda de respaldo** (`recuperarConContexto()` en `lib/buscar.ts`): la tarea no lo decía, pero sin esto la prueba no podía pasar — "¿y cómo lo deshago?" se abstenía antes de llegar al modelo (un solo lexema contra `MINIMO_COINCIDENCIAS = 3`). Si la pregunta sola no encuentra nada, se repite la búsqueda con las preguntas anteriores del usuario delante. Una pregunta que se sostiene sola se busca igual que antes.
+  - Regla 7 en el prompt: el historial sirve para entender la pregunta, no es fuente.
+  - Comprobado contra el FTS real: tres seguimientos que solos no encontraban nada traen ahora primero el documento correcto; un cambio de tema no arrastra el tema anterior.
+  - 28 tests (antes 19), incluido `tests/buscar.test.ts` (nuevo).
+  - Detalle en [docs/historial.md](../docs/historial.md).
 
 ---
 

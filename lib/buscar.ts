@@ -79,6 +79,39 @@ export async function recuperar(
     .sort((a, b) => PRIORIDAD_TIPO[a.tipo] - PRIORIDAD_TIPO[b.tipo] || b.rank - a.rank);
 }
 
+// T-22: una pregunta de seguimiento ("¿y cómo lo deshago?") casi nunca pasa
+// el umbral por sí sola — trae uno o dos lexemas y MINIMO_COINCIDENCIAS
+// exige 3 — y aunque los trajera, el sujeto está en el turno anterior. Por
+// eso, si la pregunta actual no encuentra nada, se repite la búsqueda con
+// las preguntas anteriores de la conversación delante.
+//
+// Solo como respaldo, nunca siempre: una pregunta que se sostiene sola se
+// busca exactamente igual que antes de T-22 (la calibración de T-17 sigue
+// valiendo) y un cambio de tema no arrastra documentos del tema viejo.
+//
+// Se descartó exigir que los fragmentos del respaldo coincidieran también
+// con alguna palabra de la pregunta actual: el stemmer español no une las
+// conjugaciones irregulares ("deshago" → deshag, "deshacer" → deshac), así
+// que ese filtro tumbaba justo el caso para el que existe el respaldo. El
+// precio es que una pregunta sin relación hecha a mitad de conversación
+// recibe los fragmentos del tema anterior; la regla 2 del prompt y la
+// verificación de citas de T-20 son las que la frenan en ese caso.
+export async function recuperarConContexto(
+  supabase: SupabaseClient,
+  pregunta: string,
+  herramienta: string,
+  usuarioId: string | null = null,
+  preguntasAnteriores: string[] = []
+): Promise<ResultadoBusqueda[]> {
+  const directos = await recuperar(supabase, pregunta, herramienta, usuarioId);
+  if (directos.length > 0 || preguntasAnteriores.length === 0) {
+    return directos;
+  }
+
+  const consultaConContexto = [...preguntasAnteriores, pregunta].join(" ");
+  return recuperar(supabase, consultaConContexto, herramienta, usuarioId);
+}
+
 // T-21: la UI muestra las herramientas con su nombre propio ("Salesforce",
 // "n8n") y el corpus las guarda en minúsculas ("salesforce"), que es lo que
 // compara `buscar()` con un `=` exacto. La normalización vive aquí, junto a
