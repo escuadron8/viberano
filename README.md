@@ -35,16 +35,17 @@ El repositorio empezó siendo un MVP de interfaz con respuestas guionizadas, y d
 - Postgres con el esquema de conocimiento, políticas RLS por tipo de fuente y búsqueda full-text en español con umbral de relevancia y orden `oficial > compartido > personal`.
 - `/api/consulta`: si no hay nada por encima del umbral se abstiene **sin llamar al modelo**; si lo hay, llama a Gemini con salida estructurada y **verifica en servidor que cada fuente citada existe de verdad** entre los fragmentos enviados, descartando la respuesta entera si no cuadra.
 - **El chat conectado de punta a punta**, probado en un móvil: una pregunta cubierta por el corpus responde con su chip de origen y una pregunta fuera de él recibe la abstención. Cada turno (pregunta, respuesta y fuentes citadas) se guarda para poder auditarlo después.
+- **Contexto de conversación**: el modelo recibe los últimos 3 turnos, así que un seguimiento como "¿y cómo lo deshago?" mantiene el hilo. Si la pregunta sola no encuentra nada en el corpus, la búsqueda se repite con las preguntas anteriores delante; el historial sirve para entender la pregunta, nunca cuenta como fuente.
+- **PWA instalable**, probada en Android y en el PC: se añade a la pantalla de inicio y abre a pantalla completa con su icono. El service worker no cachea nada todavía, así que la app necesita conexión.
 
 **Lo que falta**:
 
-- **El corpus oficial real**: lo que hay en `corpus/` son 15 documentos de relleno para probar el pipeline. Es el bloqueo principal, y de él depende recalibrar el umbral de relevancia.
-- **El corpus oficial real** (arriba) es también lo que falta para que el chat luzca: hoy responde sobre los 15 documentos de relleno.
-- Contexto de conversación entre turnos, PWA instalable y el recorrido end-to-end en un móvil limpio.
+- **El corpus oficial real**: lo que hay en `corpus/` son 15 documentos de relleno para probar el pipeline. Es el bloqueo principal: de él depende que el chat luzca en la demo y recalibrar el umbral de relevancia.
+- El recorrido end-to-end en un móvil limpio con el guion de la demo, el botón de reportar respuesta (deseable) y la prueba de aislamiento de las políticas RLS con dos cuentas reales.
 
 ## Cómo se prueba
 
-La verificación es en buena parte manual, sobre la propia app, más una suite de tests automatizados (Vitest) que por ahora cubre `/api/consulta` y `/api/conversacion`, y unos scripts de comprobación del motor:
+La verificación es en buena parte manual, sobre la propia app, más una suite de tests automatizados (Vitest) que por ahora cubre `/api/consulta`, `/api/conversacion` y la búsqueda con contexto, y unos scripts de comprobación del motor:
 
 ```bash
 npm install
@@ -67,6 +68,7 @@ npm run probar-ia        # contrato de respuesta de Gemini: cita cuando puede, s
 
 - Recorre el flujo completo en un viewport móvil (la app es mobile-first): onboarding → selección de software → chat → progreso.
 - El chat responde de verdad: cada pregunta va a `/api/consulta` y lo que se pinta es lo que devuelve el pipeline (respuesta, chips de origen, o la abstención cuando el corpus no da para responder). Requiere sesión iniciada y el corpus cargado. **Pruébalo con Salesforce**, que es la única herramienta con corpus hoy: n8n y Claude se abstendrán siempre, que es lo correcto pero no luce.
+- Para probar el contexto, haz una pregunta cubierta y después un seguimiento sin repetir el sujeto (por ejemplo, "¿Cómo fusiono dos cuentas duplicadas?" y luego "¿Y cómo lo deshago?").
 - `/catalogo` es una página de catálogo de componentes (botón, tarjeta, burbuja de chat, chip de origen, anillo de progreso) para verificar visualmente el sistema de diseño de forma aislada.
 - En [demos/](demos/) y [pitch/](pitch/) hay grabaciones de las distintas versiones de la app en funcionamiento, usadas como referencia y para el vídeo de presentación del concurso.
 
@@ -87,9 +89,11 @@ Todo el código de este repositorio se ha escrito mediante **vibe coding**: el e
 ## Estructura del repo
 
 ```
-app/            rutas de Next.js (onboarding, selección, chat, progreso, catálogo) y /api
+app/            rutas de Next.js (onboarding, selección, chat, progreso, catálogo), /api, manifest e iconos
 components/     componentes del sistema de diseño (Boton, Tarjeta, BurbujaChat, ChipOrigen...)
 lib/            motor de respuesta: buscar.ts (recuperación) e ia.ts (cliente de Gemini)
+public/         estáticos, incluido el service worker (sw.js)
+tests/          suite de Vitest
 supabase/       migraciones: esquema, políticas RLS y función buscar()
 corpus/         documentos de conocimiento oficial + FORMATO.md para quien lo escriba
 scripts/        carga del corpus y scripts de comprobación del motor

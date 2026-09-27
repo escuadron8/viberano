@@ -12,16 +12,16 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 
 ## Dónde nos quedamos
 
-*Actualizado el 2026-09-23, al cerrar T-21.*
+*Actualizado el 2026-09-27, al cerrar T-23.*
 
-**Cerradas**: T-01 → T-11, T-13, T-14, T-16 → T-21. Toda la Fase 0, la Fase 1, la Fase 2 (salvo T-15) y la Fase 3a están hechas, y con T-21 **el hito de la Fase 3b está cumplido: el chat real funciona de punta a punta**, probado en un móvil con sesión — una pregunta cubierta responde con su chip de origen y una pregunta fuera del corpus se abstiene. Dentro de la 3b queda T-22.
+**Cerradas**: T-01 → T-11, T-13, T-14, T-16 → T-23. Toda la Fase 0, la Fase 1, la Fase 2 (salvo T-15), la Fase 3a y la Fase 3b están hechas: **el chat real funciona de punta a punta**, probado en un móvil con sesión, y mantiene el hilo entre turnos (T-22). Del cierre ya está la PWA instalable (T-23), probada en Android y en el PC.
 
 **Construidas pero sin cerrar** (🟡):
 - **T-12** — las políticas RLS están escritas y aplicadas (`supabase/migrations/0002_rls.sql`), pero la prueba de aislamiento con dos usuarios (FR-010) no consta ejecutada en ningún sitio. Es la prueba que la propia tarea llama "la más importante de la fase", y vuelve a ser la única deuda de prueba del repo.
 
 **El repo ya tiene suite de tests**: `npm test` (Vitest, ver [docs/historial.md](../docs/historial.md), entrada del 2026-09-22). De aquí en adelante, una tarea cuya prueba se pueda automatizar debería traer su test.
 
-**Siguiente en el camino crítico**: **T-22** (contexto de conversación), que ya puede colgarse de la conversación que abre T-21. **T-15 sigue siendo el riesgo nº1**: hasta que no haya corpus real, el chat responde sobre los 15 documentos de relleno y no se puede recalibrar el umbral de T-17.
+**Siguiente en el camino crítico**: **T-25** (recorrido end-to-end en un móvil limpio y guion de la demo), que ya tiene cerradas sus dos dependencias. T-24 (reportar respuesta) es deseable pero prescindible. **T-15 sigue siendo el riesgo nº1**: hasta que no haya corpus real, el chat responde sobre los 15 documentos de relleno y no se puede recalibrar el umbral de T-17.
 
 ---
 
@@ -51,13 +51,13 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 | T-20 | Endpoint `/api/consulta` con verificación de citas | ✅ | 3b | T-18, T-19 | ✅ test de cita inventada en verde |
 | T-21 | Chat real conectado + chips de origen | ✅ | 3b | T-08, T-20 | ✅ probado en móvil |
 | T-22 | Contexto de conversación (FR-009) | ✅ | 3b | T-21 | ✅ probado con Gemini real |
-| T-23 | PWA instalable | ⬜ | Cierre | T-04 |  |
+| T-23 | PWA instalable | ✅ | Cierre | T-04 | ✅ instalada en Android y PC |
 | T-24 | Botón de reportar respuesta | ⬜ | Cierre | T-21 |  |
 | T-25 | Pruebas end-to-end en móvil y guion de demo | ⬜ | Cierre | T-21, T-23 | 🔴 ensayo |
 
 **Corte mínimo del MVP**: T-01 → T-22, más T-23 y T-25. T-24 es deseable pero prescindible.
 
-**Queda del corte mínimo**: T-15, T-23 y T-25, más cerrar la prueba pendiente de T-12.
+**Queda del corte mínimo**: T-15 y T-25, más cerrar la prueba pendiente de T-12.
 
 ---
 
@@ -236,10 +236,14 @@ Reenviar los últimos N turnos al modelo. Los fragmentos recuperados van solo en
 
 ## Cierre
 
-### T-23 · PWA instalable ⬜
+### T-23 · PWA instalable ✅
 `manifest.json`, iconos, `theme-color`, service worker mínimo.
 
 - **Prueba**: desde Chrome en Android, "Añadir a pantalla de inicio"; la app abre a pantalla completa con su icono.
+- **Estado**: cerrada. El equipo la ha instalado en Android y también en el PC (anotado el 2026-09-27). Lo que hay (commit `1147ce2`):
+  - `app/manifest.ts`: el manifest lo genera Next.js desde aquí, no hay `manifest.json` estático. `display: "standalone"`, `theme_color` `#60A5FA` (el mismo que el `themeColor` del `viewport` en `app/layout.tsx`) y fondo blanco.
+  - Iconos de 192 y 512 px, los dos tamaños que Chrome exige para instalar, servidos como rutas (`app/icon-192.png/route.tsx`, `app/icon-512.png/route.tsx`). Comparten el recorte del logo con `app/icon.tsx` y `app/apple-icon.tsx` a través de `lib/icono.tsx`, en vez de repetirlo en cada archivo.
+  - `public/sw.js`, registrado desde `components/RegistrarServiceWorker.tsx`: **no cachea nada**. Solo cumple el requisito de instalabilidad, así que la app instalada sigue necesitando red. El modo offline queda fuera del alcance del MVP.
 
 ### T-24 · Botón de reportar respuesta ⬜
 Marca `mensaje.reportado = true`. Alimenta la métrica de SC-003.
