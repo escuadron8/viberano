@@ -98,8 +98,7 @@ supabase/       migraciones: esquema, políticas RLS y función buscar()
 corpus/         documentos de conocimiento oficial + FORMATO.md para quien lo escriba
 scripts/        carga del corpus y scripts de comprobación del motor
 diseño/         especificación visual del producto
-docs/           inception ágil del proyecto (propósito, alcance, riesgos) e historial de decisiones
-docs/producto/  documentos del producto (copias de los Claude Docs, con enlace al original)
+docs/           inception ágil del proyecto, historial de decisiones y especificación del proceso de consulta
 specs/          especificación funcional, plan de construcción y desglose de tareas
 demos/, pitch/  vídeos de demo y material del pitch del concurso
 ```
