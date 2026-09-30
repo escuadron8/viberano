@@ -23,8 +23,6 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 
 **Siguiente en el camino crítico**: **T-25** (recorrido end-to-end en un móvil limpio y guion de la demo), que ya tiene cerradas sus dos dependencias. T-24 (reportar respuesta) es deseable pero prescindible. **T-15 sigue siendo el riesgo nº1**: hasta que no haya corpus real, el chat responde sobre los 15 documentos de relleno y no se puede recalibrar el umbral de T-17.
 
-**HU6 (referencias externas en la web) ya tiene spec y tareas, sin bloqueos de decisión pendientes** ([specs/F001-HU6 - Referencias externas en la web.md](F001-HU6%20-%20Referencias%20externas%20en%20la%20web.md), Fase 6 más abajo: T-26 a T-31). Decidido (2026-09-28): la búsqueda web se hace con el grounding de Google Search de la propia API de Gemini, sin filtro propio de fiabilidad (se usa lo que el grounding traiga, siempre marcado como no validado), y el conocimiento oficial prevalece siempre sobre la web. **Siguiente paso de HU6: T-26**, el spike técnico para ver cómo encaja el grounding con el contrato JSON estructurado que ya usa `lib/ia.ts` — es el único punto que sigue siendo técnico y no de producto.
-
 ---
 
 ## Resumen
@@ -56,14 +54,8 @@ Cada tarea es una unidad que se construye y se prueba en una sesión. El orden e
 | T-23 | PWA instalable | ✅ | Cierre | T-04 | ✅ instalada en Android y PC |
 | T-24 | Botón de reportar respuesta | ⬜ | Cierre | T-21 |  |
 | T-25 | Pruebas end-to-end en móvil y guion de demo | ⬜ | Cierre | T-21, T-23 | 🔴 ensayo |
-| T-26 | Spike: grounding de Google Search en Gemini + contrato JSON | ⬜ | 6 (HU6) | T-19 |  |
-| T-27 | Marcar sin filtro de fiabilidad + aviso "no validado" | ⬜ | 6 (HU6) | T-26 |  |
-| T-28 | Búsqueda web antes de la abstención en `/api/consulta` | ⬜ | 6 (HU6) | T-18, T-26, T-27 |  |
-| T-29 | Verificación de citas para fuentes web | ⬜ | 6 (HU6) | T-28 |  |
-| T-30 | Chip "Web" + aviso "no validado" en el chat | ⬜ | 6 (HU6) | T-29 |  |
-| T-31 | Extender la regla "prioriza oficial" a los fragmentos web | ⬜ | 6 (HU6) | T-28 |  |
 
-**Corte mínimo del MVP**: T-01 → T-22, más T-23 y T-25. T-24 es deseable pero prescindible. **T-26 a T-31 son HU6 (P2), fuera del corte mínimo** — ver la sección **Fase 6** más abajo.
+**Corte mínimo del MVP**: T-01 → T-22, más T-23 y T-25. T-24 es deseable pero prescindible.
 
 **Queda del corte mínimo**: T-15 y T-25, más cerrar la prueba pendiente de T-12.
 
@@ -262,52 +254,6 @@ Marca `mensaje.reportado = true`. Alimenta la métrica de SC-003.
 Recorrido completo desde un móvil limpio: instalar → registrarse → elegir herramienta → pregunta cubierta → pregunta no cubierta. Ajustar el corpus según lo que falle. Escribir el guion de la demo.
 
 - **Prueba**: la lista de "definición de hecho" de [plan.md §5](plan.md), marcada entera.
-
----
-
-## Fase 6 — Referencias externas en la web (HU6)
-
-**Base**: [specs/F001-HU6 - Referencias externas en la web.md](F001-HU6%20-%20Referencias%20externas%20en%20la%20web.md). Historia P2 de F001, fuera del corte mínimo del MVP. Las decisiones de equipo que bloqueaban T-27 y T-31 ya están tomadas (2026-09-28); solo queda por resolver el spike técnico de T-26.
-
-### T-26 · Spike: grounding de Google Search en Gemini + contrato JSON ⬜
-Probar contra la API real de Gemini si el grounding con Google Search (`tools: [{ googleSearch: {} }]`) puede combinarse con `responseSchema` en la misma llamada de `lib/ia.ts`, o si hacen falta dos llamadas (una con grounding para obtener las referencias, otra estructurada que las reciba como fragmentos numerados `[id]`, igual que los del corpus interno).
-
-- **Entregable**: `scripts/probar-busqueda-web.mts` (mismo estilo que `probar-ia.mts`) que lanza una pregunta sin cobertura interna y muestra el `groundingMetadata` devuelto.
-- **Prueba**: una pregunta deliberadamente fuera del corpus, con Gemini real, devuelve una respuesta apoyada en resultados de Google Search con sus fuentes.
-- **Resuelve**: el punto "[NECESITA ACLARACIÓN: cómo encaja el grounding de Gemini con el contrato JSON actual]" del spec de HU6 — el resultado de este spike se documenta ahí.
-
-### T-27 · Marcar sin filtro de fiabilidad + aviso "no validado" ⬜
-Decisión del equipo (2026-09-28): no se aplica ningún criterio propio de fiabilidad sobre los resultados del grounding — lo que Gemini traiga en `groundingMetadata` es lo que se usa, siempre marcado como fuente externa no validada (FR-013). La abstención de HU5 (escenario 3) solo se da cuando el grounding no devuelve ningún resultado, no por "baja calidad" de lo que sí devuelve.
-
-- **Entregable**: la instrucción correspondiente en `REGLAS_SISTEMA` (`lib/ia.ts`) y el texto del aviso que acompaña al chip web (T-30).
-- **Prueba**: una consulta sin cobertura interna, con un único resultado web (cualquiera que sea), responde usándolo y con el aviso de "no validado" visible.
-
-### T-28 · Búsqueda web antes de la abstención en `/api/consulta` ⬜
-Extender el pipeline: cuando `recuperar()` no supera el umbral de relevancia (el punto donde hoy T-18 se abstiene directamente), llamar a la variante con grounding antes de rendirse.
-
-- **Entregable**: cambios en `app/api/consulta/route.ts` y `lib/ia.ts` (nueva función o extensión de `generarRespuesta()`).
-- **Prueba**: (a) sin fragmentos internos pero con resultado web fiable, la respuesta usa la referencia externa; (b) sin fragmentos internos y sin resultado web fiable, se abstiene igual que hoy (HU5, escenario 3).
-- **Depende**: T-18 (camino de abstención existente), T-26 y T-27.
-
-### T-29 · Verificación de citas para fuentes web ⬜
-Extender (o replicar, según lo que resuelva T-26) la verificación de T-20 para que también cubra las citas de fuentes `web`: ningún `id` citado puede quedarse sin verificar contra lo que devolvió el grounding.
-
-- **Entregable**: verificación en `route.ts` + test.
-- **Prueba**: test análogo al de T-20 pero con una cita web inventada — la respuesta se descarta y cae a la abstención.
-- **Depende**: T-28.
-
-### T-30 · Chip "Web" + aviso "no validado" en el chat ⬜
-Pintar el chip `web` (ya existe en `ChipOrigen`, sin camino que lo produzca hasta ahora) cuando `fuentes` incluya una referencia externa, con el aviso de que no ha sido validada por la organización (FR-013).
-
-- **Prueba** en móvil real: una pregunta sin cobertura interna pero con resultado web fiable pinta el chip "Web" y su aviso.
-- **Depende**: T-29.
-
-### T-31 · Extender la regla "prioriza oficial" a los fragmentos web ⬜
-Decisión del equipo (2026-09-28): el conocimiento oficial prevalece siempre sobre la web; la web es el último recurso. No hace falta una regla nueva — es la regla 5 de `REGLAS_SISTEMA` en `lib/ia.ts` ("si dos fragmentos se contradicen, prioriza el oficial"), redactada hoy pensando solo en oficial/compartido/personal. Esta tarea es extender su texto para que cubra explícitamente los fragmentos web, como red de seguridad para cualquier turno donde coexistan.
-
-- **Entregable**: regla 5 de `REGLAS_SISTEMA` actualizada.
-- **Prueba**: caso de test con un fragmento oficial y uno web contradictorios en el mismo turno — la respuesta prioriza el oficial y lo dice.
-- **Depende**: T-28.
 
 ---
 
